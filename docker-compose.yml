@@ -1,0 +1,57 @@
+# InterviewOS — local development stack.
+#   docker compose up --build
+#
+# Services:
+#   db        Postgres 16 with the pgvector extension preinstalled
+#   backend   FastAPI (migrations run on start, then uvicorn --reload)
+#   frontend  Next.js dev server
+#
+# Configuration comes from the root `.env` (copy from `.env.example`).
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-interviewos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-interviewos}
+      POSTGRES_DB: ${POSTGRES_DB:-interviewos}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-interviewos}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - backend_storage:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  backend_storage:

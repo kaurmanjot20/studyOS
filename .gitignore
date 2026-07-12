@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / Next
+node_modules/
+.next/
+out/
+next-env.d.ts
+.turbo/
+
+# Env & secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Uploads / runtime data
+backend/storage/
+storage/
+*.log
+
+# Local-only planning docs (kept out of the repo by request)
+plan.md
+docs/architecture.md
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
