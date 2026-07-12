@@ -14,7 +14,9 @@ from typing import Literal
 from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ProviderName = Literal["openai", "anthropic", "gemini", "openrouter", "ollama"]
+ProviderName = Literal[
+    "openai", "anthropic", "gemini", "nvidia", "openrouter", "ollama"
+]
 
 
 class Settings(BaseSettings):
@@ -57,6 +59,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     anthropic_api_key: str = ""
     gemini_api_key: str = ""
+    nvidia_api_key: str = ""
     openrouter_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
 

@@ -95,21 +95,32 @@ async def _run_chat(workspace_id: uuid.UUID, payload: ChatRequest) -> AsyncItera
         source_dicts = [_source_dict(i, s) for i, s in enumerate(sources, start=1)]
         yield _sse("sources", source_dicts)
 
+        synthesis_messages = [
+            ChatMessage(role="system", content=SYNTHESIS_SYSTEM),
+            ChatMessage(
+                role="user",
+                content=synthesis_user_prompt(payload.message, context),
+            ),
+        ]
+
         answer_parts: list[str] = []
         try:
             async for chunk in provider.stream(
-                [
-                    ChatMessage(role="system", content=SYNTHESIS_SYSTEM),
-                    ChatMessage(
-                        role="user",
-                        content=synthesis_user_prompt(payload.message, context),
-                    ),
-                ],
-                model=config.chat_model,
+                synthesis_messages, model=config.chat_model
             ):
                 if chunk.delta:
                     answer_parts.append(chunk.delta)
                     yield _sse("token", {"text": chunk.delta})
+
+            # Some providers occasionally return an empty stream under load. Fall back
+            # to a single blocking completion so the user still gets an answer.
+            if not answer_parts:
+                result = await provider.chat(
+                    synthesis_messages, model=config.chat_model
+                )
+                if result.content:
+                    answer_parts.append(result.content)
+                    yield _sse("token", {"text": result.content})
         except Exception as exc:
             detail = str(exc)
             yield _sse(

@@ -7,6 +7,7 @@ header, and any extra headers. Implemented with httpx so no vendor SDK is requir
 
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import AsyncIterator, Sequence
 
@@ -23,6 +24,31 @@ from app.providers.base import (
 )
 
 _TIMEOUT = httpx.Timeout(60.0, connect=10.0)
+
+# Transient statuses worth retrying with exponential backoff (rate limits, overload).
+_RETRY_STATUS = {429, 503}
+_MAX_ATTEMPTS = 4
+
+
+def _backoff_seconds(attempt: int) -> float:
+    return min(2**attempt, 8) + 0.25
+
+
+async def _send_with_retry(
+    client: httpx.AsyncClient, method: str, url: str, *, stream: bool = False, **kwargs
+) -> httpx.Response:
+    """Issue a request, retrying transient 429/503 with exponential backoff."""
+    response: httpx.Response | None = None
+    for attempt in range(_MAX_ATTEMPTS):
+        request = client.build_request(method, url, **kwargs)
+        response = await client.send(request, stream=stream)
+        if response.status_code in _RETRY_STATUS and attempt < _MAX_ATTEMPTS - 1:
+            await response.aclose()
+            await asyncio.sleep(_backoff_seconds(attempt))
+            continue
+        return response
+    assert response is not None
+    return response
 
 
 class OpenAICompatProvider(LLMProvider):
@@ -56,15 +82,28 @@ class OpenAICompatProvider(LLMProvider):
         model = model or self.config.chat_model
         body = self._payload(messages, model, **opts)
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            resp = await client.post(
-                self._url("/chat/completions"), headers=self._headers(), json=body
-            )
-        if resp.status_code >= 400:
-            raise ProviderError(f"{self.name} chat failed: {resp.status_code} {resp.text[:300]}")
-        data = resp.json()
-        choice = data["choices"][0]["message"]["content"]
-        usage = data.get("usage") or {}
-        return ChatResult(content=choice, model=data.get("model", model), usage=usage)
+            # Some gateways soft-throttle bursts by returning 200 with empty choices;
+            # retry those (and 429s, handled inside _send_with_retry) before giving up.
+            for attempt in range(_MAX_ATTEMPTS):
+                resp = await _send_with_retry(
+                    client, "POST", self._url("/chat/completions"),
+                    headers=self._headers(), json=body,
+                )
+                if resp.status_code >= 400:
+                    raise ProviderError(
+                        f"{self.name} chat failed: {resp.status_code} {resp.text[:300]}"
+                    )
+                data = resp.json()
+                choices = data.get("choices") or []
+                content = choices[0]["message"]["content"] if choices else ""
+                if content or attempt == _MAX_ATTEMPTS - 1:
+                    return ChatResult(
+                        content=content or "",
+                        model=data.get("model", model),
+                        usage=data.get("usage") or {},
+                    )
+                await asyncio.sleep(_backoff_seconds(attempt))
+        raise ProviderError(f"{self.name} chat returned no content")
 
     async def stream(
         self, messages: Sequence[ChatMessage], *, model: str | None = None, **opts
@@ -72,9 +111,11 @@ class OpenAICompatProvider(LLMProvider):
         model = model or self.config.chat_model
         body = self._payload(messages, model, **opts) | {"stream": True}
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            async with client.stream(
-                "POST", self._url("/chat/completions"), headers=self._headers(), json=body
-            ) as resp:
+            resp = await _send_with_retry(
+                client, "POST", self._url("/chat/completions"),
+                stream=True, headers=self._headers(), json=body,
+            )
+            try:
                 if resp.status_code >= 400:
                     text = await resp.aread()
                     raise ProviderError(
@@ -94,6 +135,8 @@ class OpenAICompatProvider(LLMProvider):
                         continue
                     if delta:
                         yield StreamChunk(delta=delta)
+            finally:
+                await resp.aclose()
 
     async def embed(
         self, texts: Sequence[str], *, model: str | None = None
@@ -102,8 +145,8 @@ class OpenAICompatProvider(LLMProvider):
         if not model:
             raise ProviderError(f"{self.name}: no embedding model configured")
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            resp = await client.post(
-                self._url("/embeddings"),
+            resp = await _send_with_retry(
+                client, "POST", self._url("/embeddings"),
                 headers=self._headers(),
                 json={"model": model, "input": list(texts)},
             )
@@ -116,7 +159,9 @@ class OpenAICompatProvider(LLMProvider):
 
     async def list_models(self) -> list[ModelInfo]:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            resp = await client.get(self._url("/models"), headers=self._headers())
+            resp = await _send_with_retry(
+                client, "GET", self._url("/models"), headers=self._headers()
+            )
         if resp.status_code >= 400:
             raise ProviderError(
                 f"{self.name} list_models failed: {resp.status_code} {resp.text[:200]}"
