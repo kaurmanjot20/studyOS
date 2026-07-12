@@ -1,17 +1,19 @@
-"""Study-artifact generation: quizzes, flashcards, and revision notes.
+"""Study-artifact generation and history.
 
-All three retrieve relevant context from the workspace (RAG) and generate grounded output
-via the active LLM provider. Quiz scoring feeds wrong answers back into memory as weak
-topics, so revision naturally prioritizes what the learner misses.
+Generates quizzes, flashcards, and revision notes grounded in the workspace's documents,
+and persists each generation as a `StudyArtifact` so every study tab has a browsable,
+renamable history. Quiz scoring feeds wrong answers back into memory as weak topics.
 """
 
 from __future__ import annotations
 
 import uuid
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.memory.service import MemoryService
+from app.models.study_artifact import StudyArtifact
 from app.prompts.study import (
     FLASHCARDS_SYSTEM,
     QUIZ_SYSTEM,
@@ -21,8 +23,7 @@ from app.prompts.study import (
     revision_user_prompt,
 )
 from app.providers.base import ChatMessage, ProviderError
-from app.providers.factory import build_provider
-from app.rag.retrieval import assemble_context, retrieve
+from app.services.context import build_context
 from app.services.provider_service import ProviderService
 from app.utils.json_parse import extract_json
 
@@ -32,24 +33,7 @@ class StudyService:
         self.db = db
         self.providers = ProviderService(db)
 
-    async def _context(self, workspace_id: uuid.UUID, query: str, k: int = 8) -> str:
-        """Retrieve grounding context for a subject; empty string if unavailable."""
-        emb_config = await self.providers.resolve_embedding_config()
-        if not emb_config.embedding_model:
-            return ""
-        try:
-            embedder = build_provider(emb_config)
-            chunks = await retrieve(
-                self.db,
-                embedder,
-                workspace_id=workspace_id,
-                query=query,
-                embedding_model=emb_config.embedding_model,
-                k=k,
-            )
-            return assemble_context(chunks)
-        except Exception:
-            return ""
+    # --- generation helpers ---
 
     async def _generate(self, system: str, user: str) -> str:
         config = await self.providers.resolve_active_config()
@@ -64,6 +48,54 @@ class StudyService:
         )
         return result.content
 
+    async def _save(
+        self, workspace_id: uuid.UUID, kind: str, title: str, payload: dict
+    ) -> StudyArtifact:
+        artifact = StudyArtifact(
+            workspace_id=workspace_id, kind=kind, title=title, payload=payload
+        )
+        self.db.add(artifact)
+        await self.db.commit()
+        await self.db.refresh(artifact)
+        return artifact
+
+    # --- artifact history CRUD ---
+
+    async def list_artifacts(
+        self, workspace_id: uuid.UUID, kind: str
+    ) -> list[StudyArtifact]:
+        result = await self.db.execute(
+            select(StudyArtifact)
+            .where(
+                StudyArtifact.workspace_id == workspace_id,
+                StudyArtifact.kind == kind,
+            )
+            .order_by(StudyArtifact.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def get_artifact(self, artifact_id: uuid.UUID) -> StudyArtifact | None:
+        return await self.db.get(StudyArtifact, artifact_id)
+
+    async def rename_artifact(
+        self, artifact_id: uuid.UUID, title: str
+    ) -> StudyArtifact | None:
+        artifact = await self.db.get(StudyArtifact, artifact_id)
+        if artifact is None:
+            return None
+        artifact.title = title.strip() or artifact.title
+        await self.db.commit()
+        await self.db.refresh(artifact)
+        return artifact
+
+    async def delete_artifact(self, artifact_id: uuid.UUID) -> None:
+        artifact = await self.db.get(StudyArtifact, artifact_id)
+        if artifact is not None:
+            await self.db.delete(artifact)
+            await self.db.commit()
+
+    # --- generators (persist and return the saved artifact) ---
+
     async def generate_quiz(
         self,
         workspace_id: uuid.UUID,
@@ -71,39 +103,30 @@ class StudyService:
         subject: str,
         difficulty: str = "medium",
         count: int = 5,
-    ) -> list[dict]:
-        context = await self._context(workspace_id, subject or "interview prep")
+    ) -> StudyArtifact:
+        context = await build_context(self.db, workspace_id, subject or "interview prep")
         raw = await self._generate(
             QUIZ_SYSTEM, quiz_user_prompt(subject, difficulty, count, context)
         )
         try:
-            data = extract_json(raw)
-            questions = data["questions"]
+            questions = extract_json(raw)["questions"]
         except (ValueError, KeyError, TypeError) as exc:
             raise ProviderError(f"Could not parse quiz output: {exc}")
-        # Normalize / guard.
-        clean: list[dict] = []
-        for q in questions:
-            if not isinstance(q, dict) or len(q.get("options", [])) < 2:
-                continue
-            clean.append(
-                {
-                    "topic": q.get("topic") or subject or "General",
-                    "question": q["question"],
-                    "options": q["options"],
-                    "answer_index": int(q.get("answer_index", 0)),
-                    "explanation": q.get("explanation", ""),
-                }
-            )
-        return clean
+        clean = [
+            {
+                "topic": q.get("topic") or subject or "General",
+                "question": q["question"],
+                "options": q["options"],
+                "answer_index": int(q.get("answer_index", 0)),
+                "explanation": q.get("explanation", ""),
+            }
+            for q in questions
+            if isinstance(q, dict) and len(q.get("options", [])) >= 2
+        ]
+        title = f"{subject or 'Quiz'} · {difficulty}"
+        return await self._save(workspace_id, "quiz", title, {"questions": clean})
 
-    async def score_quiz(
-        self, workspace_id: uuid.UUID, items: list[dict]
-    ) -> dict:
-        """Score submitted answers and record missed topics as weak topics.
-
-        Each item: {topic, answer_index, selected_index}.
-        """
+    async def score_quiz(self, workspace_id: uuid.UUID, items: list[dict]) -> dict:
         correct = 0
         missed_topics: list[str] = []
         for item in items:
@@ -128,8 +151,8 @@ class StudyService:
 
     async def generate_flashcards(
         self, workspace_id: uuid.UUID, *, subject: str, count: int = 8
-    ) -> list[dict]:
-        context = await self._context(workspace_id, subject or "interview prep")
+    ) -> StudyArtifact:
+        context = await build_context(self.db, workspace_id, subject or "interview prep")
         raw = await self._generate(
             FLASHCARDS_SYSTEM, flashcards_user_prompt(subject, count, context)
         )
@@ -137,16 +160,20 @@ class StudyService:
             cards = extract_json(raw)["cards"]
         except (ValueError, KeyError, TypeError) as exc:
             raise ProviderError(f"Could not parse flashcards output: {exc}")
-        return [
+        clean = [
             {"front": c["front"], "back": c["back"]}
             for c in cards
             if isinstance(c, dict) and c.get("front") and c.get("back")
         ]
+        title = f"{subject or 'Flashcards'} · {len(clean)} cards"
+        return await self._save(workspace_id, "flashcards", title, {"cards": clean})
 
     async def generate_revision(
         self, workspace_id: uuid.UUID, *, subject: str
-    ) -> str:
-        context = await self._context(workspace_id, subject or "interview prep")
-        return await self._generate(
+    ) -> StudyArtifact:
+        context = await build_context(self.db, workspace_id, subject or "interview prep")
+        markdown = await self._generate(
             REVISION_SYSTEM, revision_user_prompt(subject, context)
         )
+        title = subject or "Revision notes"
+        return await self._save(workspace_id, "revision", title, {"markdown": markdown})

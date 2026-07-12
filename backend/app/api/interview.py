@@ -12,10 +12,10 @@ from app.models.schemas import (
     InterviewAnswerRequest,
     InterviewSessionRead,
     InterviewStartRequest,
+    RenameRequest,
     ResumeQuestionsRequest,
-    ResumeQuestionsResponse,
     ResumeReviewRequest,
-    ResumeReviewResponse,
+    StudyArtifactRead,
 )
 from app.providers.base import ProviderError
 from app.services.interview_service import InterviewNotFound, InterviewService
@@ -78,8 +78,25 @@ async def get_interview(session_id: uuid.UUID, db: AsyncSession = Depends(get_db
         raise HTTPException(status_code=404, detail="Interview session not found")
 
 
+@router.patch("/interview/{session_id}", response_model=InterviewSessionRead)
+async def rename_interview(
+    session_id: uuid.UUID,
+    payload: RenameRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        return await InterviewService(db).rename(session_id, payload.title)
+    except InterviewNotFound:
+        raise HTTPException(status_code=404, detail="Interview session not found")
+
+
+@router.delete("/interview/{session_id}", status_code=204)
+async def delete_interview(session_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    await InterviewService(db).delete(session_id)
+
+
 @router.post(
-    "/workspaces/{workspace_id}/resume/review", response_model=ResumeReviewResponse
+    "/workspaces/{workspace_id}/resume/review", response_model=StudyArtifactRead
 )
 async def resume_review(
     workspace_id: uuid.UUID,
@@ -87,17 +104,16 @@ async def resume_review(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        markdown = await ResumeService(db).review(payload.document_id)
+        return await ResumeService(db).review(workspace_id, payload.document_id)
     except ResumeEmpty:
         raise HTTPException(status_code=400, detail="That document has no extractable text.")
     except ProviderError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
-    return ResumeReviewResponse(markdown=markdown)
 
 
 @router.post(
     "/workspaces/{workspace_id}/resume/questions",
-    response_model=ResumeQuestionsResponse,
+    response_model=StudyArtifactRead,
 )
 async def resume_questions(
     workspace_id: uuid.UUID,
@@ -105,11 +121,10 @@ async def resume_questions(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        questions = await ResumeService(db).questions(
-            payload.document_id, count=payload.count
+        return await ResumeService(db).questions(
+            workspace_id, payload.document_id, count=payload.count
         )
     except ResumeEmpty:
         raise HTTPException(status_code=400, detail="That document has no extractable text.")
     except ProviderError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
-    return ResumeQuestionsResponse(questions=questions)

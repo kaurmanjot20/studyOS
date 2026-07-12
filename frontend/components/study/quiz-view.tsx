@@ -5,9 +5,10 @@ import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 
 import { StudyConfigBar } from "@/components/study/study-config-bar";
 import { Button } from "@/components/ui/button";
+import { HistoryMenu } from "@/components/ui/history-menu";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { QuizQuestion, QuizScoreResult } from "@/lib/types";
+import type { ArtifactSummary, QuizQuestion, QuizScoreResult } from "@/lib/types";
 
 export function QuizView({ workspaceId }: { workspaceId: string }) {
   const [subject, setSubject] = React.useState("");
@@ -18,6 +19,27 @@ export function QuizView({ workspaceId }: { workspaceId: string }) {
   const [questions, setQuestions] = React.useState<QuizQuestion[]>([]);
   const [answers, setAnswers] = React.useState<(number | null)[]>([]);
   const [result, setResult] = React.useState<QuizScoreResult | null>(null);
+  const [history, setHistory] = React.useState<ArtifactSummary[]>([]);
+  const [activeId, setActiveId] = React.useState<string | null>(null);
+
+  const loadHistory = React.useCallback(async () => {
+    try {
+      setHistory(await api.study.history(workspaceId, "quiz"));
+    } catch {
+      setHistory([]);
+    }
+  }, [workspaceId]);
+
+  React.useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
+  const showQuestions = (qs: QuizQuestion[], id: string | null) => {
+    setQuestions(qs);
+    setAnswers(new Array(qs.length).fill(null));
+    setActiveId(id);
+    setResult(null);
+  };
 
   const generate = async () => {
     setLoading(true);
@@ -25,12 +47,21 @@ export function QuizView({ workspaceId }: { workspaceId: string }) {
     setResult(null);
     try {
       const res = await api.study.quiz(workspaceId, { subject, difficulty, count });
-      setQuestions(res.questions);
-      setAnswers(new Array(res.questions.length).fill(null));
+      showQuestions((res.payload.questions as QuizQuestion[]) ?? [], res.id);
+      loadHistory();
     } catch {
       setError("Couldn't generate the quiz. Check your AI provider in Settings.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openArtifact = async (id: string) => {
+    try {
+      const a = await api.study.artifact(id);
+      showQuestions((a.payload.questions as QuizQuestion[]) ?? [], id);
+    } catch {
+      /* ignore */
     }
   };
 
@@ -51,6 +82,26 @@ export function QuizView({ workspaceId }: { workspaceId: string }) {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
+      <div className="mb-2 flex justify-end">
+        <HistoryMenu
+          items={history.map((h) => ({
+            id: h.id,
+            title: h.title,
+            subtitle: new Date(h.created_at).toLocaleString(),
+          }))}
+          activeId={activeId}
+          onOpen={openArtifact}
+          onRename={async (id, title) => {
+            await api.study.renameArtifact(id, title);
+            loadHistory();
+          }}
+          onDelete={async (id) => {
+            await api.study.deleteArtifact(id);
+            if (activeId === id) showQuestions([], null);
+            loadHistory();
+          }}
+        />
+      </div>
       <StudyConfigBar
         subject={subject}
         onSubject={setSubject}

@@ -5,8 +5,9 @@ import { Loader2 } from "lucide-react";
 
 import { Markdown } from "@/components/chat/markdown";
 import { Button } from "@/components/ui/button";
+import { HistoryMenu } from "@/components/ui/history-menu";
 import { api } from "@/lib/api";
-import type { DocumentItem } from "@/lib/types";
+import type { ArtifactSummary, DocumentItem } from "@/lib/types";
 
 export function ResumeView({ workspaceId }: { workspaceId: string }) {
   const [docs, setDocs] = React.useState<DocumentItem[]>([]);
@@ -15,8 +16,25 @@ export function ResumeView({ workspaceId }: { workspaceId: string }) {
   const [error, setError] = React.useState<string | null>(null);
   const [review, setReview] = React.useState("");
   const [questions, setQuestions] = React.useState<string[]>([]);
+  const [history, setHistory] = React.useState<ArtifactSummary[]>([]);
+  const [activeId, setActiveId] = React.useState<string | null>(null);
+
+  const loadHistory = React.useCallback(async () => {
+    try {
+      const [rev, qs] = await Promise.all([
+        api.study.history(workspaceId, "resume_review"),
+        api.study.history(workspaceId, "resume_questions"),
+      ]);
+      setHistory(
+        [...rev, ...qs].sort((a, b) => b.created_at.localeCompare(a.created_at)),
+      );
+    } catch {
+      setHistory([]);
+    }
+  }, [workspaceId]);
 
   React.useEffect(() => {
+    loadHistory();
     api.documents
       .list(workspaceId)
       .then((all) => {
@@ -25,7 +43,7 @@ export function ResumeView({ workspaceId }: { workspaceId: string }) {
         setDocId((cur) => cur || ready[0]?.id || "");
       })
       .catch(() => setDocs([]));
-  }, [workspaceId]);
+  }, [workspaceId, loadHistory]);
 
   const run = async (kind: "review" | "questions") => {
     if (!docId) return;
@@ -33,10 +51,17 @@ export function ResumeView({ workspaceId }: { workspaceId: string }) {
     setError(null);
     try {
       if (kind === "review") {
-        setReview((await api.resume.review(workspaceId, docId)).markdown);
+        const a = await api.resume.review(workspaceId, docId);
+        setReview((a.payload.markdown as string) ?? "");
+        setQuestions([]);
+        setActiveId(a.id);
       } else {
-        setQuestions((await api.resume.questions(workspaceId, docId)).questions);
+        const a = await api.resume.questions(workspaceId, docId);
+        setQuestions((a.payload.questions as string[]) ?? []);
+        setReview("");
+        setActiveId(a.id);
       }
+      loadHistory();
     } catch {
       setError("Couldn't process the resume. Check your AI provider in Settings.");
     } finally {
@@ -44,13 +69,50 @@ export function ResumeView({ workspaceId }: { workspaceId: string }) {
     }
   };
 
+  const openArtifact = async (id: string) => {
+    try {
+      const a = await api.study.artifact(id);
+      if (a.kind === "resume_review") {
+        setReview((a.payload.markdown as string) ?? "");
+        setQuestions([]);
+      } else {
+        setQuestions((a.payload.questions as string[]) ?? []);
+        setReview("");
+      }
+      setActiveId(id);
+    } catch {
+      /* ignore */
+    }
+  };
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
-      <h2 className="text-base font-medium">Resume review</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Upload your resume in the Documents panel, then review it or generate
-        resume-specific interview questions.
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h2 className="text-base font-medium">Resume review</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Upload your resume in the Documents panel, then review it or generate
+            resume-specific interview questions.
+          </p>
+        </div>
+        <HistoryMenu
+          items={history.map((h) => ({
+            id: h.id,
+            title: h.title,
+            subtitle: `${h.kind === "resume_review" ? "Review" : "Questions"} · ${new Date(h.created_at).toLocaleDateString()}`,
+          }))}
+          activeId={activeId}
+          onOpen={openArtifact}
+          onRename={async (id, title) => {
+            await api.study.renameArtifact(id, title);
+            loadHistory();
+          }}
+          onDelete={async (id) => {
+            await api.study.deleteArtifact(id);
+            loadHistory();
+          }}
+        />
+      </div>
 
       {docs.length === 0 ? (
         <p className="mt-6 rounded-md border border-border bg-card px-3 py-4 text-sm text-muted-foreground">

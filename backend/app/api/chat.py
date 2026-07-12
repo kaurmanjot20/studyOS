@@ -24,7 +24,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.graph import AgentDeps, build_agent
 from app.db.session import SessionFactory, get_db
-from app.models.schemas import ChatRequest, ChatSessionRead, MessageRead
+from app.models.schemas import (
+    ChatRequest,
+    ChatSessionRead,
+    MessageRead,
+    RenameRequest,
+)
 from app.prompts.synthesis import SYNTHESIS_SYSTEM, synthesis_user_prompt
 from app.providers.base import ChatMessage
 from app.providers.factory import build_provider
@@ -175,3 +180,20 @@ async def session_messages(
     session_id: uuid.UUID, db: AsyncSession = Depends(get_db)
 ):
     return await ChatService(db).get_messages(session_id)
+
+
+@router.patch("/chat/sessions/{session_id}", response_model=ChatSessionRead)
+async def rename_session(
+    session_id: uuid.UUID,
+    payload: RenameRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    session = await ChatService(db).rename_session(session_id, payload.title)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session
+
+
+@router.delete("/chat/sessions/{session_id}", status_code=204)
+async def delete_session(session_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    await ChatService(db).delete_session(session_id)

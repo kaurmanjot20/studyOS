@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document import Chunk
+from app.models.study_artifact import StudyArtifact
 from app.prompts.interview import (
     RESUME_QUESTIONS_SYSTEM,
     RESUME_REVIEW_SYSTEM,
@@ -56,16 +57,39 @@ class ResumeService:
         )
         return result.content
 
-    async def review(self, document_id: uuid.UUID) -> str:
-        text = await self._document_text(document_id)
-        return await self._generate(RESUME_REVIEW_SYSTEM, resume_review_user_prompt(text))
+    async def _save(
+        self, workspace_id: uuid.UUID, kind: str, title: str, payload: dict
+    ) -> StudyArtifact:
+        artifact = StudyArtifact(
+            workspace_id=workspace_id, kind=kind, title=title, payload=payload
+        )
+        self.db.add(artifact)
+        await self.db.commit()
+        await self.db.refresh(artifact)
+        return artifact
 
-    async def questions(self, document_id: uuid.UUID, *, count: int = 6) -> list[str]:
+    async def review(
+        self, workspace_id: uuid.UUID, document_id: uuid.UUID
+    ) -> StudyArtifact:
+        text = await self._document_text(document_id)
+        markdown = await self._generate(
+            RESUME_REVIEW_SYSTEM, resume_review_user_prompt(text)
+        )
+        return await self._save(
+            workspace_id, "resume_review", "Resume review", {"markdown": markdown}
+        )
+
+    async def questions(
+        self, workspace_id: uuid.UUID, document_id: uuid.UUID, *, count: int = 6
+    ) -> StudyArtifact:
         text = await self._document_text(document_id)
         raw = await self._generate(
             RESUME_QUESTIONS_SYSTEM, resume_questions_user_prompt(text, count)
         )
         try:
-            return [q for q in extract_json(raw)["questions"] if isinstance(q, str)]
+            questions = [q for q in extract_json(raw)["questions"] if isinstance(q, str)]
         except (ValueError, KeyError, TypeError) as exc:
             raise ProviderError(f"Could not parse resume questions: {exc}")
+        return await self._save(
+            workspace_id, "resume_questions", "Resume questions", {"questions": questions}
+        )

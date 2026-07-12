@@ -72,6 +72,7 @@ export interface InterviewTurn {
 export interface InterviewSession {
   id: string;
   workspace_id: string;
+  title: string | null;
   company: string | null;
   subject: string | null;
   difficulty: string;
@@ -103,6 +104,28 @@ export interface QuizScoreResult {
 export interface Flashcard {
   front: string;
   back: string;
+}
+
+export interface ArtifactSummary {
+  id: string;
+  kind: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StudyArtifact {
+  id: string;
+  workspace_id: string;
+  kind: string;
+  title: string;
+  payload: {
+    questions?: QuizQuestion[] | string[];
+    cards?: Flashcard[];
+    markdown?: string;
+  };
+  created_at: string;
+  updated_at: string;
 }
 
 export interface MemoryItem {

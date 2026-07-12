@@ -57,6 +57,7 @@ class InterviewSessionRead(BaseModel):
 
     id: uuid.UUID
     workspace_id: uuid.UUID
+    title: str | None
     company: str | None
     subject: str | None
     difficulty: str
@@ -147,6 +148,30 @@ class RevisionResponse(BaseModel):
     markdown: str
 
 
+class StudyArtifactRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    workspace_id: uuid.UUID
+    kind: str
+    title: str
+    payload: dict
+    created_at: datetime
+    updated_at: datetime
+
+
+class StudyArtifactSummary(BaseModel):
+    """History list item (without the full payload)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    kind: str
+    title: str
+    created_at: datetime
+    updated_at: datetime
+
+
 # --- MCP ---
 
 
@@ -188,6 +213,10 @@ class MemoryRead(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1)
     session_id: uuid.UUID | None = None
+
+
+class RenameRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=300)
 
 
 class MessageRead(BaseModel):

@@ -22,6 +22,7 @@ class InterviewSession(UUIDMixin, TimestampMixin, Base):
     workspace_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    title: Mapped[str | None] = mapped_column(String(300), nullable=True)
     company: Mapped[str | None] = mapped_column(String(120), nullable=True)
     subject: Mapped[str | None] = mapped_column(String(160), nullable=True)
     difficulty: Mapped[str] = mapped_column(String(20), default="medium", nullable=False)

@@ -4,9 +4,10 @@ import * as React from "react";
 import { ChevronLeft, ChevronRight, Loader2, RotateCw } from "lucide-react";
 
 import { StudyConfigBar } from "@/components/study/study-config-bar";
+import { HistoryMenu } from "@/components/ui/history-menu";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
-import type { Flashcard } from "@/lib/types";
+import type { ArtifactSummary, Flashcard } from "@/lib/types";
 
 export function FlashcardsView({ workspaceId }: { workspaceId: string }) {
   const [subject, setSubject] = React.useState("");
@@ -15,19 +16,48 @@ export function FlashcardsView({ workspaceId }: { workspaceId: string }) {
   const [cards, setCards] = React.useState<Flashcard[]>([]);
   const [index, setIndex] = React.useState(0);
   const [flipped, setFlipped] = React.useState(false);
+  const [history, setHistory] = React.useState<ArtifactSummary[]>([]);
+  const [activeId, setActiveId] = React.useState<string | null>(null);
+
+  const loadHistory = React.useCallback(async () => {
+    try {
+      setHistory(await api.study.history(workspaceId, "flashcards"));
+    } catch {
+      setHistory([]);
+    }
+  }, [workspaceId]);
+
+  React.useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
+  const showCards = (cs: Flashcard[], id: string | null) => {
+    setCards(cs);
+    setIndex(0);
+    setFlipped(false);
+    setActiveId(id);
+  };
 
   const generate = async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await api.study.flashcards(workspaceId, { subject, count: 8 });
-      setCards(res.cards);
-      setIndex(0);
-      setFlipped(false);
+      showCards((res.payload.cards as Flashcard[]) ?? [], res.id);
+      loadHistory();
     } catch {
       setError("Couldn't generate flashcards. Check your AI provider in Settings.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openArtifact = async (id: string) => {
+    try {
+      const a = await api.study.artifact(id);
+      showCards((a.payload.cards as Flashcard[]) ?? [], id);
+    } catch {
+      /* ignore */
     }
   };
 
@@ -40,6 +70,26 @@ export function FlashcardsView({ workspaceId }: { workspaceId: string }) {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
+      <div className="mb-2 flex justify-end">
+        <HistoryMenu
+          items={history.map((h) => ({
+            id: h.id,
+            title: h.title,
+            subtitle: new Date(h.created_at).toLocaleString(),
+          }))}
+          activeId={activeId}
+          onOpen={openArtifact}
+          onRename={async (id, title) => {
+            await api.study.renameArtifact(id, title);
+            loadHistory();
+          }}
+          onDelete={async (id) => {
+            await api.study.deleteArtifact(id);
+            if (activeId === id) showCards([], null);
+            loadHistory();
+          }}
+        />
+      </div>
       <StudyConfigBar
         subject={subject}
         onSubject={setSubject}

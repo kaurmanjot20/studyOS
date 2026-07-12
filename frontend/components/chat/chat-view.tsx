@@ -5,6 +5,7 @@ import { ArrowUp, Plus, Sparkles } from "lucide-react";
 
 import { Markdown } from "@/components/chat/markdown";
 import { Button } from "@/components/ui/button";
+import { HistoryMenu } from "@/components/ui/history-menu";
 import { api } from "@/lib/api";
 import { streamChat } from "@/lib/chat-stream";
 import { cn } from "@/lib/utils";
@@ -149,20 +150,26 @@ export function ChatView({ workspaceId, onTrace }: ChatViewProps) {
         <Button variant="ghost" size="sm" className="gap-1.5" onClick={newChat}>
           <Plus className="size-3.5" /> New chat
         </Button>
-        {sessions.length > 0 && (
-          <select
-            value={sessionId.current ?? ""}
-            onChange={(e) => e.target.value && openSession(e.target.value)}
-            className="ml-auto h-7 max-w-[240px] rounded-md border border-input bg-transparent px-2 text-xs text-muted-foreground"
-          >
-            <option value="">History ({sessions.length})…</option>
-            {sessions.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.title || "Untitled chat"} · {new Date(s.created_at).toLocaleDateString()}
-              </option>
-            ))}
-          </select>
-        )}
+        <div className="ml-auto">
+          <HistoryMenu
+            items={sessions.map((s) => ({
+              id: s.id,
+              title: s.title || "Untitled chat",
+              subtitle: new Date(s.created_at).toLocaleString(),
+            }))}
+            activeId={sessionId.current}
+            onOpen={openSession}
+            onRename={async (id, title) => {
+              await api.chat.rename(id, title);
+              loadSessions();
+            }}
+            onDelete={async (id) => {
+              await api.chat.remove(id);
+              if (sessionId.current === id) newChat();
+              loadSessions();
+            }}
+          />
+        </div>
       </div>
 
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">

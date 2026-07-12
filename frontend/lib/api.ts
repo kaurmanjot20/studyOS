@@ -5,10 +5,10 @@
  * helpers rather than calling `fetch` directly.
  */
 import type {
+  ArtifactSummary,
   ChatSessionRecord,
   ConnectionTestResult,
   DocumentItem,
-  Flashcard,
   InterviewSession,
   McpServerStatus,
   MemoryItem,
@@ -16,8 +16,8 @@ import type {
   ProviderMeta,
   ProviderSetting,
   ProviderSettingsUpsert,
-  QuizQuestion,
   QuizScoreResult,
+  StudyArtifact,
   Workspace,
   WorkspaceCreate,
 } from "@/lib/types";
@@ -152,10 +152,10 @@ export const api = {
       workspaceId: string,
       data: { subject: string; difficulty: string; count: number },
     ) =>
-      request<{ questions: QuizQuestion[] }>(
-        `/api/workspaces/${workspaceId}/quiz`,
-        { method: "POST", body: JSON.stringify(data) },
-      ),
+      request<StudyArtifact>(`/api/workspaces/${workspaceId}/quiz`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
     scoreQuiz: (
       workspaceId: string,
       items: { topic: string; answer_index: number; selected_index: number | null }[],
@@ -165,15 +165,28 @@ export const api = {
         body: JSON.stringify({ items }),
       }),
     flashcards: (workspaceId: string, data: { subject: string; count: number }) =>
-      request<{ cards: Flashcard[] }>(
-        `/api/workspaces/${workspaceId}/flashcards`,
-        { method: "POST", body: JSON.stringify(data) },
-      ),
+      request<StudyArtifact>(`/api/workspaces/${workspaceId}/flashcards`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
     revision: (workspaceId: string, data: { subject: string }) =>
-      request<{ markdown: string }>(
-        `/api/workspaces/${workspaceId}/revision`,
-        { method: "POST", body: JSON.stringify(data) },
+      request<StudyArtifact>(`/api/workspaces/${workspaceId}/revision`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    // artifact history (shared across quiz/flashcards/revision/resume by `kind`)
+    history: (workspaceId: string, kind: string) =>
+      request<ArtifactSummary[]>(
+        `/api/workspaces/${workspaceId}/artifacts?kind=${encodeURIComponent(kind)}`,
       ),
+    artifact: (id: string) => request<StudyArtifact>(`/api/artifacts/${id}`),
+    renameArtifact: (id: string, title: string) =>
+      request<StudyArtifact>(`/api/artifacts/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title }),
+      }),
+    deleteArtifact: (id: string) =>
+      request<void>(`/api/artifacts/${id}`, { method: "DELETE" }),
   },
   mcp: {
     servers: () => request<McpServerStatus[]>("/api/mcp/servers"),
@@ -185,6 +198,13 @@ export const api = {
       ),
     messages: (sessionId: string) =>
       request<MessageRecord[]>(`/api/chat/sessions/${sessionId}/messages`),
+    rename: (sessionId: string, title: string) =>
+      request<ChatSessionRecord>(`/api/chat/sessions/${sessionId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title }),
+      }),
+    remove: (sessionId: string) =>
+      request<void>(`/api/chat/sessions/${sessionId}`, { method: "DELETE" }),
   },
   interview: {
     start: (
@@ -209,20 +229,26 @@ export const api = {
       request<InterviewSession[]>(
         `/api/workspaces/${workspaceId}/interview/sessions`,
       ),
+    get: (sessionId: string) =>
+      request<InterviewSession>(`/api/interview/${sessionId}`),
+    rename: (sessionId: string, title: string) =>
+      request<InterviewSession>(`/api/interview/${sessionId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title }),
+      }),
+    remove: (sessionId: string) =>
+      request<void>(`/api/interview/${sessionId}`, { method: "DELETE" }),
   },
   resume: {
     review: (workspaceId: string, documentId: string) =>
-      request<{ markdown: string }>(
-        `/api/workspaces/${workspaceId}/resume/review`,
-        { method: "POST", body: JSON.stringify({ document_id: documentId }) },
-      ),
+      request<StudyArtifact>(`/api/workspaces/${workspaceId}/resume/review`, {
+        method: "POST",
+        body: JSON.stringify({ document_id: documentId }),
+      }),
     questions: (workspaceId: string, documentId: string, count = 6) =>
-      request<{ questions: string[] }>(
-        `/api/workspaces/${workspaceId}/resume/questions`,
-        {
-          method: "POST",
-          body: JSON.stringify({ document_id: documentId, count }),
-        },
-      ),
+      request<StudyArtifact>(`/api/workspaces/${workspaceId}/resume/questions`, {
+        method: "POST",
+        body: JSON.stringify({ document_id: documentId, count }),
+      }),
   },
 };

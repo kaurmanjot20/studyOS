@@ -5,6 +5,7 @@ import { Loader2, Send } from "lucide-react";
 
 import { Markdown } from "@/components/chat/markdown";
 import { Button } from "@/components/ui/button";
+import { HistoryMenu } from "@/components/ui/history-menu";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,48 @@ export function InterviewView({ workspaceId }: { workspaceId: string }) {
   const [answer, setAnswer] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [sessions, setSessions] = React.useState<InterviewSession[]>([]);
+
+  const loadSessions = React.useCallback(async () => {
+    try {
+      setSessions(await api.interview.sessions(workspaceId));
+    } catch {
+      setSessions([]);
+    }
+  }, [workspaceId]);
+
+  React.useEffect(() => {
+    loadSessions();
+  }, [loadSessions]);
+
+  const openSession = async (id: string) => {
+    try {
+      setSession(await api.interview.get(id));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const historyMenu = (
+    <HistoryMenu
+      items={sessions.map((s) => ({
+        id: s.id,
+        title: s.title || s.subject || "Interview",
+        subtitle: `${s.status === "completed" ? `${s.score}%` : "in progress"} · ${new Date(s.created_at).toLocaleDateString()}`,
+      }))}
+      activeId={session?.id}
+      onOpen={openSession}
+      onRename={async (id, title) => {
+        await api.interview.rename(id, title);
+        loadSessions();
+      }}
+      onDelete={async (id) => {
+        await api.interview.remove(id);
+        if (session?.id === id) setSession(null);
+        loadSessions();
+      }}
+    />
+  );
 
   const start = async () => {
     setBusy(true);
@@ -32,6 +75,7 @@ export function InterviewView({ workspaceId }: { workspaceId: string }) {
           target_questions: count,
         }),
       );
+      loadSessions();
     } catch {
       setError("Couldn't start the interview. Check your AI provider in Settings.");
     } finally {
@@ -46,6 +90,7 @@ export function InterviewView({ workspaceId }: { workspaceId: string }) {
       const updated = await api.interview.answer(session.id, answer.trim());
       setSession(updated);
       setAnswer("");
+      if (updated.status === "completed") loadSessions();
     } catch {
       setError("Couldn't submit your answer.");
     } finally {
@@ -56,10 +101,15 @@ export function InterviewView({ workspaceId }: { workspaceId: string }) {
   if (!session) {
     return (
       <div className="mx-auto max-w-md px-4 py-10">
-        <h2 className="text-base font-medium">Mock interview</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          The interviewer asks questions, evaluates your answers, and tracks weak areas.
-        </p>
+        <div className="mb-3 flex items-start justify-between">
+          <div>
+            <h2 className="text-base font-medium">Mock interview</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              The interviewer asks questions, evaluates answers, and tracks weak areas.
+            </p>
+          </div>
+          {historyMenu}
+        </div>
         <div className="mt-5 space-y-3">
           <Field label="Company (optional)">
             <Input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="e.g. Google" />
@@ -96,13 +146,19 @@ export function InterviewView({ workspaceId }: { workspaceId: string }) {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <div className="min-w-0 truncate text-sm text-muted-foreground">
           {session.company ? `${session.company} · ` : ""}
           {session.subject} · {session.difficulty}
         </div>
-        <div className="text-xs text-muted-foreground">
-          {session.asked_count}/{session.target_questions}
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {session.asked_count}/{session.target_questions}
+          </span>
+          <Button variant="ghost" size="sm" onClick={() => setSession(null)}>
+            New
+          </Button>
+          {historyMenu}
         </div>
       </div>
 

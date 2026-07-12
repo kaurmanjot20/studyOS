@@ -66,3 +66,20 @@ class ChatService:
             .order_by(Message.created_at)
         )
         return list(result.scalars().all())
+
+    async def rename_session(
+        self, session_id: uuid.UUID, title: str
+    ) -> ChatSession | None:
+        session = await self.db.get(ChatSession, session_id)
+        if session is None:
+            return None
+        session.title = title.strip() or session.title
+        await self.db.commit()
+        await self.db.refresh(session)
+        return session
+
+    async def delete_session(self, session_id: uuid.UUID) -> None:
+        session = await self.db.get(ChatSession, session_id)
+        if session is not None:
+            await self.db.delete(session)
+            await self.db.commit()

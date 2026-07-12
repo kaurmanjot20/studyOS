@@ -161,17 +161,9 @@ Key `.env` values (see `.env.example` for the full list):
 
 ## Roadmap
 
-- Multi-user hosting (optional auth layer — intentionally out of scope today)
 - Streaming for study/interview generation
 - Richer MCP server catalog + per-workspace MCP config
 - Spaced-repetition scheduling for flashcards
 - Interview audio (speech-to-text answers)
 - Export revision sheets to PDF / Notion
 
----
-
-## Project Status
-
-Built end-to-end in phases: workspaces, provider abstraction + fallback, document
-pipeline, planner-first RAG chat, memory, quizzes/flashcards/revision, mock interviews +
-resume, web search, MCP, and OCR — each verified against real infrastructure.

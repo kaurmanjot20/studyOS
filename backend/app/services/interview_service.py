@@ -85,8 +85,10 @@ class InterviewService:
         difficulty: str,
         target_questions: int,
     ) -> InterviewSession:
+        label = " · ".join(p for p in [company, subject] if p) or "Interview"
         session = InterviewSession(
             workspace_id=workspace_id,
+            title=label,
             company=company or None,
             subject=subject or None,
             difficulty=difficulty,
@@ -172,3 +174,16 @@ class InterviewService:
         if session is None:
             raise InterviewNotFound()
         return session
+
+    async def rename(self, session_id: uuid.UUID, title: str) -> InterviewSession:
+        session = await self.get(session_id)
+        session.title = title.strip() or session.title
+        await self.db.commit()
+        await self.db.refresh(session)
+        return session
+
+    async def delete(self, session_id: uuid.UUID) -> None:
+        session = await self.db.get(InterviewSession, session_id)
+        if session is not None:
+            await self.db.delete(session)
+            await self.db.commit()
