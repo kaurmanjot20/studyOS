@@ -18,5 +18,5 @@ class OpenRouterProvider(OpenAICompatProvider):
         headers = super()._headers()
         # Optional attribution headers recommended by OpenRouter.
         headers["HTTP-Referer"] = "https://github.com/kaurmanjot20/studyOS"
-        headers["X-Title"] = "InterviewOS"
+        headers["X-Title"] = "StudyOS"
         return headers

@@ -23,7 +23,7 @@ export function TopNav({
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent/15 text-accent">
           <Sparkles className="size-3.5" />
         </div>
-        <span className="text-sm font-semibold tracking-tight">InterviewOS</span>
+        <span className="text-sm font-semibold tracking-tight">StudyOS</span>
       </div>
 
       <div className="h-4 w-px bg-border" />

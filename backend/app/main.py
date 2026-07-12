@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="InterviewOS API",
+        title="StudyOS API",
         version=__version__,
         summary="AI-powered interview preparation workspace.",
         lifespan=lifespan,

@@ -1,4 +1,4 @@
-# InterviewOS
+# StudyOS
 
 An AI-powered interview-preparation workspace. It combines a user's own notes, books,
 slides, PDFs, and resume with live web knowledge to prepare them for software-engineering
@@ -9,8 +9,6 @@ decides which tools to use — search notes (RAG), search the web, read the resu
 memory of weak topics, generate a quiz, or write revision notes — before any answer is
 produced. It is **provider-agnostic**: users bring their own LLM key (OpenAI, Anthropic,
 Gemini, OpenRouter, or Ollama), and no vendor SDK is hardcoded into the app.
-
-> Repo: `studyOS` · Product: InterviewOS
 
 ## Highlights
 
@@ -44,12 +42,12 @@ docker compose up --build   # brings up db (postgres+pgvector), backend, fronten
 - Backend docs: http://localhost:8000/docs
 - Health: http://localhost:8000/health
 
-## Documentation
-
-- [Architecture](docs/architecture.md) — system design, provider abstraction, agent graph
-- [Build plan](plan.md) — phased, checkbox-tracked implementation plan
+Open **Settings** in the app to configure your AI provider (bring your own API key) and
+run **Test Connection**, then create a workspace and upload your notes to start.
 
 ## Project Status
 
-Under active construction, built in end-to-end phases. See [`plan.md`](plan.md) for the
-current status and what each phase delivers.
+Open-source and local-first (single user, no login required). Built in end-to-end phases:
+authentication-free workspaces, a provider-agnostic LLM layer, a document pipeline, and a
+planner-first RAG chat are in place, with mock interviews, study artifacts, web search,
+and MCP arriving in subsequent phases.

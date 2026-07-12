@@ -1,5 +1,5 @@
 /**
- * Thin API client for the InterviewOS backend.
+ * Thin API client for the StudyOS backend.
  *
  * One place that knows the base URL and error shape. Feature modules import typed
  * helpers rather than calling `fetch` directly.

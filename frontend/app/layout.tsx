@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "InterviewOS",
+  title: "StudyOS",
   description:
     "An AI-powered interview preparation workspace that combines your notes with live knowledge.",
 };
