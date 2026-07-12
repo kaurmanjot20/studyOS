@@ -15,6 +15,30 @@ export interface WorkspaceCreate {
   color?: string | null;
 }
 
+export interface Source {
+  index: number;
+  document_id: string;
+  filename: string;
+  page: number | null;
+  score: number;
+  snippet: string;
+}
+
+export interface PlanTrace {
+  reasoning: string;
+  tools: string[];
+  rewritten_query: string;
+}
+
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+  plan?: PlanTrace | null;
+  sources?: Source[];
+  streaming?: boolean;
+  error?: string | null;
+}
+
 export type DocumentStatus = "queued" | "processing" | "ready" | "failed";
 
 export interface DocumentItem {

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { type Trace } from "@/components/chat/chat-view";
 import { Center, type WorkspaceMode } from "@/components/shell/center";
 import { LeftSidebar } from "@/components/shell/left-sidebar";
 import { RightSidebar } from "@/components/shell/right-sidebar";
@@ -24,6 +25,7 @@ export function AppShell() {
   const [activeProviderLabel, setActiveProviderLabel] = React.useState<
     string | null
   >(null);
+  const [trace, setTrace] = React.useState<Trace>({ plan: null, sources: [] });
 
   const loadActiveProvider = React.useCallback(async () => {
     try {
@@ -109,8 +111,9 @@ export function AppShell() {
           workspace={activeWorkspace}
           mode={mode}
           onModeChange={setMode}
+          onTrace={setTrace}
         />
-        <RightSidebar />
+        <RightSidebar trace={trace} />
       </div>
 
       <CreateWorkspaceDialog

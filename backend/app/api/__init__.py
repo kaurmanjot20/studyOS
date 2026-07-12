@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from app.api import documents, health, settings, workspaces
+from app.api import chat, documents, health, settings, workspaces
 
 
 def register_routers(app: FastAPI) -> None:
@@ -17,3 +17,4 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(workspaces.router, prefix="/api/workspaces")
     app.include_router(settings.router, prefix="/api/settings")
     app.include_router(documents.router, prefix="/api")
+    app.include_router(chat.router, prefix="/api")

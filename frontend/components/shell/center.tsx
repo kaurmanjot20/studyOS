@@ -6,6 +6,7 @@ import {
   SquareStack,
 } from "lucide-react";
 
+import { ChatView, type Trace } from "@/components/chat/chat-view";
 import { cn } from "@/lib/utils";
 import type { Workspace } from "@/lib/types";
 
@@ -32,9 +33,10 @@ interface CenterProps {
   workspace: Workspace | null;
   mode: WorkspaceMode;
   onModeChange: (mode: WorkspaceMode) => void;
+  onTrace: (trace: Trace) => void;
 }
 
-export function Center({ workspace, mode, onModeChange }: CenterProps) {
+export function Center({ workspace, mode, onModeChange, onTrace }: CenterProps) {
   if (!workspace) {
     return (
       <main className="flex flex-1 items-center justify-center px-6">
@@ -68,9 +70,13 @@ export function Center({ workspace, mode, onModeChange }: CenterProps) {
         ))}
       </div>
 
-      <div className="flex flex-1 items-center justify-center overflow-y-auto px-6 py-10">
-        <ModePlaceholder mode={mode} workspace={workspace} />
-      </div>
+      {mode === "chat" ? (
+        <ChatView workspaceId={workspace.id} onTrace={onTrace} />
+      ) : (
+        <div className="flex flex-1 items-center justify-center overflow-y-auto px-6 py-10">
+          <ModePlaceholder mode={mode} workspace={workspace} />
+        </div>
+      )}
     </main>
   );
 }

@@ -38,6 +38,36 @@ class WorkspaceRead(BaseModel):
     updated_at: datetime
 
 
+# --- Chat ---
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(min_length=1)
+    session_id: uuid.UUID | None = None
+
+
+class MessageRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    session_id: uuid.UUID
+    role: str
+    content: str
+    sources: list | None
+    plan: dict | None
+    created_at: datetime
+
+
+class ChatSessionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    workspace_id: uuid.UUID
+    title: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
 # --- Documents ---
 
 
