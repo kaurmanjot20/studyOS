@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     # embed model + actual dim are also recorded per document, and changing this
     # requires re-embedding. 1536 = OpenAI text-embedding-3-small.
     embedding_dim: int = 1536
+    # Default completion cap. Also keeps within credit-limited free tiers (e.g.
+    # OpenRouter reserves credits for the full context unless max_tokens is set).
+    default_max_tokens: int = 2048
 
     # --- Document pipeline ---
     storage_dir: str = "storage"

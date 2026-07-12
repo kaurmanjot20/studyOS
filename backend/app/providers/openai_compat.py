@@ -13,6 +13,7 @@ from collections.abc import AsyncIterator, Sequence
 
 import httpx
 
+from app.core.config import settings
 from app.providers.base import (
     ChatMessage,
     ChatResult,
@@ -70,11 +71,12 @@ class OpenAICompatProvider(LLMProvider):
         body = {
             "model": model,
             "messages": [{"role": m.role, "content": m.content} for m in messages],
+            # Always bound completion length — required to stay within credit-limited
+            # free tiers (e.g. OpenRouter), and a sane default everywhere else.
+            "max_tokens": opts.get("max_tokens", settings.default_max_tokens),
         }
         if "temperature" in opts:
             body["temperature"] = opts["temperature"]
-        if "max_tokens" in opts:
-            body["max_tokens"] = opts["max_tokens"]
         return body
 
     async def chat(
