@@ -30,6 +30,8 @@ class AgentDeps:
     provider: LLMProvider
     chat_model: str
     embedding_model: str | None
+    # Provider used to embed the query for retrieval (may differ from the chat provider).
+    embedder: LLMProvider | None = None
 
 
 def _parse_plan(text: str, question: str) -> Plan:
@@ -85,11 +87,12 @@ def _make_retrieve(deps: AgentDeps):
         sources = []
         # Only search_notes is implemented in Phase 4; other tools are recognised
         # by the planner and wired in their own phases.
+        embedder = deps.embedder or deps.provider
         if "search_notes" in plan.normalized_tools() and deps.embedding_model:
             try:
                 sources = await retrieve(
                     deps.db,
-                    deps.provider,
+                    embedder,
                     workspace_id=uuid.UUID(state["workspace_id"]),
                     query=plan.rewritten_query,
                     embedding_model=deps.embedding_model,

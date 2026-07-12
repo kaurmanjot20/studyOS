@@ -113,6 +113,25 @@ class ProviderService:
             base_url=_env_base_url(provider),
         )
 
+    async def resolve_embedding_config(self) -> ProviderConfig:
+        """Config for embeddings. Uses a dedicated embedding provider when configured
+        (EMBEDDING_PROVIDER), otherwise derives from the active chat provider."""
+        ep = settings.embedding_provider
+        if ep:
+            return ProviderConfig(
+                provider=ep,
+                api_key=_env_api_key(ep),
+                embedding_model=settings.default_embedding_model,
+                base_url=_env_base_url(ep),
+            )
+        active = await self.resolve_active_config()
+        return ProviderConfig(
+            provider=active.provider,
+            api_key=active.api_key,
+            embedding_model=active.embedding_model,
+            base_url=active.base_url,
+        )
+
     def _fallback_config(self) -> ProviderConfig:
         fp = settings.fallback_provider
         return ProviderConfig(

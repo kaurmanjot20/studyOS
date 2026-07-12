@@ -101,14 +101,16 @@ async def process_document(document_id: uuid.UUID) -> None:
                 await db.commit()
                 return
 
-            config = await ProviderService(db).resolve_active_config()
-            if not config.embedding_model:
+            emb_config = await ProviderService(db).resolve_embedding_config()
+            if not emb_config.embedding_model:
                 raise ProviderError(
                     "No embedding model configured. Set one in AI Provider Settings."
                 )
-            provider = build_provider(config)
+            embedder = build_provider(emb_config)
 
-            vectors = await _embed_all([c.content for c in chunks], provider, config.embedding_model)
+            vectors = await _embed_all(
+                [c.content for c in chunks], embedder, emb_config.embedding_model
+            )
             _validate_dims(vectors)
 
             for chunk, vector in zip(chunks, vectors):
@@ -129,7 +131,7 @@ async def process_document(document_id: uuid.UUID) -> None:
             doc.page_count = extracted.page_count
             doc.word_count = extracted.word_count
             doc.chunk_count = len(chunks)
-            doc.embedding_model = config.embedding_model
+            doc.embedding_model = emb_config.embedding_model
             doc.embedding_dim = len(vectors[0])
             doc.status = DocumentStatus.ready.value
             await db.commit()

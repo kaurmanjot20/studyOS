@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     # --- Default provider (users configure their own in Settings) ---
     default_llm_provider: ProviderName = "openai"
     default_llm_model: str = "gpt-4o-mini"
+    # Embeddings can use a different provider than chat (e.g. chat on OpenRouter, which
+    # has no embeddings, while embeddings run locally on Ollama). Empty embedding_provider
+    # means "use the active chat provider".
+    embedding_provider: str = ""
     default_embedding_model: str = "text-embedding-3-small"
     # pgvector columns need a fixed dimension. This is the indexed vector size; the
     # embed model + actual dim are also recorded per document, and changing this

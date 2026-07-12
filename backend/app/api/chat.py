@@ -28,6 +28,7 @@ from app.db.session import SessionFactory, get_db
 from app.models.schemas import ChatRequest, ChatSessionRead, MessageRead
 from app.prompts.synthesis import SYNTHESIS_SYSTEM, synthesis_user_prompt
 from app.providers.base import ChatMessage
+from app.providers.factory import build_provider
 from app.services.chat_service import ChatService
 from app.services.provider_service import ProviderService
 from app.services.workspace_service import WorkspaceNotFound, WorkspaceService
@@ -57,6 +58,9 @@ async def _run_chat(workspace_id: uuid.UUID, payload: ChatRequest) -> AsyncItera
         config = await provider_service.resolve_active_config()
         # Wraps the active provider with a local fallback on rate limits (if enabled).
         provider = await provider_service.resolve_active_provider(config)
+        # Embeddings may run on a different provider (e.g. local Ollama).
+        emb_config = await provider_service.resolve_embedding_config()
+        embedder = build_provider(emb_config)
         chat_service = ChatService(db)
 
         session = await chat_service.get_or_create_session(
@@ -69,7 +73,8 @@ async def _run_chat(workspace_id: uuid.UUID, payload: ChatRequest) -> AsyncItera
                 db=db,
                 provider=provider,
                 chat_model=config.chat_model,
-                embedding_model=config.embedding_model,
+                embedding_model=emb_config.embedding_model,
+                embedder=embedder,
             )
         )
 
