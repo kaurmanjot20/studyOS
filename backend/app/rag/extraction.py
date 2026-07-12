@@ -78,9 +78,18 @@ def _extract_txt(path: str) -> ExtractedDoc:
 
 
 def _extract_image(path: str) -> ExtractedDoc:
-    # OCR is enabled in Phase 10 (Tesseract). Until then, images produce no text
-    # rather than failing the upload.
-    return ExtractedDoc(pages=[], page_count=0)
+    # OCR via Tesseract. If OCR fails (or finds nothing), the image simply yields no
+    # text rather than failing the upload.
+    try:
+        import pytesseract
+        from PIL import Image
+
+        text = pytesseract.image_to_string(Image.open(path)).strip()
+    except Exception:
+        text = ""
+    if not text:
+        return ExtractedDoc(pages=[], page_count=0)
+    return ExtractedDoc(pages=[ExtractedPage(text=text)], page_count=1)
 
 
 _EXTRACTORS = {

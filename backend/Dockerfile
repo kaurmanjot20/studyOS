@@ -7,9 +7,10 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Node.js is required to run MCP servers (npx @modelcontextprotocol/server-*).
+# Node.js runs MCP servers (npx @modelcontextprotocol/server-*).
+# Tesseract provides OCR for image documents.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends nodejs npm \
+    && apt-get install -y --no-install-recommends nodejs npm tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
