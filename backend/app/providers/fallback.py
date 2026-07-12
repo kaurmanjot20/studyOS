@@ -19,9 +19,18 @@ from app.providers.base import (
     ConnectionStatus,
     LLMProvider,
     ProviderConfig,
+    ProviderError,
     RateLimitError,
     StreamChunk,
 )
+
+
+def _fallback_unavailable(primary: str, fallback: str, error: Exception) -> ProviderError:
+    return ProviderError(
+        f"{primary} is rate-limited and the local fallback ({fallback}) is not "
+        f"reachable ({str(error)[:120]}). Start Ollama (and `ollama pull` the fallback "
+        f"model), switch to a less-limited model in Settings, or retry shortly."
+    )
 
 
 class FallbackProvider(LLMProvider):
@@ -41,7 +50,12 @@ class FallbackProvider(LLMProvider):
             return await self.primary.chat(messages, model=model, **opts)
         except RateLimitError:
             # Fallback uses its own configured model.
-            return await self.fallback.chat(messages, **opts)
+            try:
+                return await self.fallback.chat(messages, **opts)
+            except Exception as exc:
+                raise _fallback_unavailable(
+                    self.primary.name, self.fallback.name, exc
+                ) from exc
 
     async def stream(
         self, messages: Sequence[ChatMessage], *, model: str | None = None, **opts
@@ -55,8 +69,13 @@ class FallbackProvider(LLMProvider):
         except StopAsyncIteration:
             return
         except RateLimitError:
-            async for chunk in self.fallback.stream(messages, **opts):
-                yield chunk
+            try:
+                async for chunk in self.fallback.stream(messages, **opts):
+                    yield chunk
+            except Exception as exc:
+                raise _fallback_unavailable(
+                    self.primary.name, self.fallback.name, exc
+                ) from exc
             return
 
         yield first
