@@ -5,8 +5,6 @@ autogenerate and for `create_all` in tests. Concrete models are added per phase.
 """
 
 from app.db.base import Base  # noqa: F401
+from app.models.workspace import Workspace  # noqa: F401
 
-# Models are registered as they are introduced in later phases, e.g.:
-# from app.models.user import User  # noqa: F401
-
-__all__ = ["Base"]
+__all__ = ["Base", "Workspace"]

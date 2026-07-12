@@ -9,10 +9,9 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from app.api import health
+from app.api import health, workspaces
 
 
 def register_routers(app: FastAPI) -> None:
     app.include_router(health.router)
-    # Feature routers are mounted here as phases land, e.g.:
-    # app.include_router(workspaces.router, prefix="/api/workspaces")
+    app.include_router(workspaces.router, prefix="/api/workspaces")
