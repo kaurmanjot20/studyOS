@@ -8,6 +8,7 @@ import type {
   ConnectionTestResult,
   DocumentItem,
   Flashcard,
+  InterviewSession,
   MemoryItem,
   ProviderMeta,
   ProviderSetting,
@@ -169,6 +170,45 @@ export const api = {
       request<{ markdown: string }>(
         `/api/workspaces/${workspaceId}/revision`,
         { method: "POST", body: JSON.stringify(data) },
+      ),
+  },
+  interview: {
+    start: (
+      workspaceId: string,
+      data: {
+        company: string;
+        subject: string;
+        difficulty: string;
+        target_questions: number;
+      },
+    ) =>
+      request<InterviewSession>(
+        `/api/workspaces/${workspaceId}/interview/start`,
+        { method: "POST", body: JSON.stringify(data) },
+      ),
+    answer: (sessionId: string, answer: string) =>
+      request<InterviewSession>(`/api/interview/${sessionId}/answer`, {
+        method: "POST",
+        body: JSON.stringify({ answer }),
+      }),
+    sessions: (workspaceId: string) =>
+      request<InterviewSession[]>(
+        `/api/workspaces/${workspaceId}/interview/sessions`,
+      ),
+  },
+  resume: {
+    review: (workspaceId: string, documentId: string) =>
+      request<{ markdown: string }>(
+        `/api/workspaces/${workspaceId}/resume/review`,
+        { method: "POST", body: JSON.stringify({ document_id: documentId }) },
+      ),
+    questions: (workspaceId: string, documentId: string, count = 6) =>
+      request<{ questions: string[] }>(
+        `/api/workspaces/${workspaceId}/resume/questions`,
+        {
+          method: "POST",
+          body: JSON.stringify({ document_id: documentId, count }),
+        },
       ),
   },
 };

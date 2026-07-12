@@ -1,5 +1,6 @@
 import {
   ClipboardList,
+  FileUser,
   MessageSquare,
   Mic,
   NotebookPen,
@@ -7,6 +8,8 @@ import {
 } from "lucide-react";
 
 import { ChatView, type Trace } from "@/components/chat/chat-view";
+import { InterviewView } from "@/components/interview/interview-view";
+import { ResumeView } from "@/components/interview/resume-view";
 import { FlashcardsView } from "@/components/study/flashcards-view";
 import { QuizView } from "@/components/study/quiz-view";
 import { RevisionView } from "@/components/study/revision-view";
@@ -16,6 +19,7 @@ import type { Workspace } from "@/lib/types";
 export type WorkspaceMode =
   | "chat"
   | "interview"
+  | "resume"
   | "quiz"
   | "revision"
   | "flashcards";
@@ -23,6 +27,7 @@ export type WorkspaceMode =
 const MODES: { id: WorkspaceMode; label: string; icon: React.ReactNode }[] = [
   { id: "chat", label: "Chat", icon: <MessageSquare className="size-3.5" /> },
   { id: "interview", label: "Interview", icon: <Mic className="size-3.5" /> },
+  { id: "resume", label: "Resume", icon: <FileUser className="size-3.5" /> },
   { id: "quiz", label: "Quiz", icon: <ClipboardList className="size-3.5" /> },
   { id: "revision", label: "Revision", icon: <NotebookPen className="size-3.5" /> },
   {
@@ -75,6 +80,14 @@ export function Center({ workspace, mode, onModeChange, onTrace }: CenterProps) 
 
       {mode === "chat" ? (
         <ChatView workspaceId={workspace.id} onTrace={onTrace} />
+      ) : mode === "interview" ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <InterviewView workspaceId={workspace.id} />
+        </div>
+      ) : mode === "resume" ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <ResumeView workspaceId={workspace.id} />
+        </div>
       ) : mode === "quiz" ? (
         <div className="min-h-0 flex-1 overflow-y-auto">
           <QuizView workspaceId={workspace.id} />
@@ -83,62 +96,11 @@ export function Center({ workspace, mode, onModeChange, onTrace }: CenterProps) 
         <div className="min-h-0 flex-1 overflow-y-auto">
           <FlashcardsView workspaceId={workspace.id} />
         </div>
-      ) : mode === "revision" ? (
+      ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
           <RevisionView workspaceId={workspace.id} />
         </div>
-      ) : (
-        <div className="flex flex-1 items-center justify-center overflow-y-auto px-6 py-10">
-          <ModePlaceholder mode={mode} workspace={workspace} />
-        </div>
       )}
     </main>
-  );
-}
-
-const MODE_COPY: Record<WorkspaceMode, { title: string; body: string }> = {
-  chat: {
-    title: "Planner-first chat",
-    body: "Ask anything. The planner will decide whether to search your notes, the web, your resume, or memory before it answers — with citations.",
-  },
-  interview: {
-    title: "Mock interview",
-    body: "Pick a company, difficulty, and subject. The agent conducts the interview, evaluates answers, and tracks weak areas.",
-  },
-  quiz: {
-    title: "Adaptive quiz",
-    body: "Generate MCQs, short and long answers from your documents, with adaptive difficulty and no repeats.",
-  },
-  revision: {
-    title: "Revision notes",
-    body: "One-page summaries and last-minute cheat sheets, generated from your uploaded material.",
-  },
-  flashcards: {
-    title: "Flashcards",
-    body: "Spaced-repetition cards generated automatically from your notes.",
-  },
-};
-
-function ModePlaceholder({
-  mode,
-  workspace,
-}: {
-  mode: WorkspaceMode;
-  workspace: Workspace;
-}) {
-  const copy = MODE_COPY[mode];
-  return (
-    <div className="max-w-md text-center">
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">
-        {workspace.name}
-      </div>
-      <h2 className="mt-1 text-lg font-medium">{copy.title}</h2>
-      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-        {copy.body}
-      </p>
-      <p className="mt-4 text-xs text-muted-foreground/60">
-        Arrives in an upcoming build phase.
-      </p>
-    </div>
   );
 }

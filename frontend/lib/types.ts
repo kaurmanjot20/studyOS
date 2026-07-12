@@ -39,6 +39,30 @@ export interface ChatTurn {
   error?: string | null;
 }
 
+export interface InterviewTurn {
+  question: string;
+  topic: string;
+  answer?: string;
+  score?: number;
+  feedback?: string;
+}
+
+export interface InterviewSession {
+  id: string;
+  workspace_id: string;
+  company: string | null;
+  subject: string | null;
+  difficulty: string;
+  status: string;
+  target_questions: number;
+  asked_count: number;
+  score: number | null;
+  summary: string | null;
+  transcript: InterviewTurn[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface QuizQuestion {
   topic: string;
   question: string;

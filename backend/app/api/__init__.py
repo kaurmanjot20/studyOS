@@ -13,6 +13,7 @@ from app.api import (
     chat,
     documents,
     health,
+    interview,
     memory,
     settings,
     study,
@@ -28,3 +29,4 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(chat.router, prefix="/api")
     app.include_router(memory.router, prefix="/api")
     app.include_router(study.router, prefix="/api")
+    app.include_router(interview.router, prefix="/api")

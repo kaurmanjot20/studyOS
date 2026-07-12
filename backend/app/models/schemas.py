@@ -38,6 +38,55 @@ class WorkspaceRead(BaseModel):
     updated_at: datetime
 
 
+# --- Interview & Resume ---
+
+
+class InterviewStartRequest(BaseModel):
+    company: str = Field(default="", max_length=120)
+    subject: str = Field(default="", max_length=160)
+    difficulty: str = Field(default="medium")
+    target_questions: int = Field(default=5, ge=1, le=12)
+
+
+class InterviewAnswerRequest(BaseModel):
+    answer: str = Field(min_length=1)
+
+
+class InterviewSessionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    workspace_id: uuid.UUID
+    company: str | None
+    subject: str | None
+    difficulty: str
+    status: str
+    target_questions: int
+    asked_count: int
+    score: int | None
+    summary: str | None
+    transcript: list[dict]
+    created_at: datetime
+    updated_at: datetime
+
+
+class ResumeReviewRequest(BaseModel):
+    document_id: uuid.UUID
+
+
+class ResumeReviewResponse(BaseModel):
+    markdown: str
+
+
+class ResumeQuestionsRequest(BaseModel):
+    document_id: uuid.UUID
+    count: int = Field(default=6, ge=1, le=15)
+
+
+class ResumeQuestionsResponse(BaseModel):
+    questions: list[str]
+
+
 # --- Study artifacts ---
 
 
