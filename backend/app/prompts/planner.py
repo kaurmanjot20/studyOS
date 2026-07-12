@@ -18,6 +18,8 @@ Available tools:
   questions about the user themselves.
 - search_memory: recall the user's weak topics, past quiz/interview performance, and
   preferences. Use when personalization would help.
+- search_files: list/inspect the user's local files via the Filesystem MCP server. Use
+  only when the user explicitly asks about their files or documents on disk.
 
 Given the user's question, respond with STRICT JSON and nothing else:
 {

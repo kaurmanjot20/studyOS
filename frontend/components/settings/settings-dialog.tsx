@@ -5,6 +5,7 @@ import { CheckCircle2, Loader2, X, XCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { McpSection } from "@/components/settings/mcp-section";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type {
@@ -278,6 +279,8 @@ export function SettingsDialog({ open, onClose, onSaved }: SettingsDialogProps) 
                 </span>
               </div>
             )}
+
+            <McpSection open={open} />
           </div>
         </div>
 

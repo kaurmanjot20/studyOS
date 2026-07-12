@@ -61,6 +61,13 @@ class Settings(BaseSettings):
     web_search_enabled: bool = True
     web_search_max_results: int = 4
 
+    # --- MCP (Model Context Protocol) ---
+    mcp_filesystem_enabled: bool = True
+    # Directory the filesystem MCP server may read (uploaded documents live here).
+    mcp_filesystem_root: str = "storage"
+    mcp_notion_enabled: bool = False
+    notion_api_key: str = ""
+
     # --- Document pipeline ---
     storage_dir: str = "storage"
     max_upload_mb: int = 25

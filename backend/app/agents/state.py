@@ -12,9 +12,13 @@ from typing import TypedDict
 
 from pydantic import BaseModel, Field
 
-# The tools the planner may choose from. Only `search_notes` is wired in Phase 4;
-# the others are recognised now and implemented in their own phases.
-TOOL_NAMES = ["search_notes", "search_web", "search_resume", "search_memory"]
+# The tools the planner may choose from.
+TOOL_NAMES = [
+    "search_notes",
+    "search_web",
+    "search_memory",
+    "search_files",
+]
 
 
 class Plan(BaseModel):

@@ -9,6 +9,7 @@ import type {
   DocumentItem,
   Flashcard,
   InterviewSession,
+  McpServerStatus,
   MemoryItem,
   ProviderMeta,
   ProviderSetting,
@@ -171,6 +172,9 @@ export const api = {
         `/api/workspaces/${workspaceId}/revision`,
         { method: "POST", body: JSON.stringify(data) },
       ),
+  },
+  mcp: {
+    servers: () => request<McpServerStatus[]>("/api/mcp/servers"),
   },
   interview: {
     start: (

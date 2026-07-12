@@ -11,6 +11,7 @@ retrieval — the parts that must complete before generation — run inside it.
 from __future__ import annotations
 
 import json
+import os
 import re
 import uuid
 from dataclasses import dataclass
@@ -24,6 +25,7 @@ from app.memory.service import MemoryService
 from app.prompts.planner import PLANNER_SYSTEM, planner_user_prompt
 from app.providers.base import ChatMessage, LLMProvider
 from app.rag.retrieval import retrieve
+from app.services import mcp_service
 from app.services.web_search import search_web
 
 
@@ -116,6 +118,19 @@ def _make_retrieve(deps: AgentDeps):
         if "search_web" in tools and settings.web_search_enabled:
             web_results = await search_web(plan.rewritten_query)
 
+        # search_files exposes the Filesystem MCP server to the agent.
+        mcp_note = ""
+        if "search_files" in tools and settings.mcp_filesystem_enabled:
+            try:
+                listing = await mcp_service.call_tool(
+                    "filesystem",
+                    "list_directory",
+                    {"path": os.path.abspath(settings.mcp_filesystem_root)},
+                )
+                mcp_note = f"Files available via the Filesystem MCP server:\n{listing[:1000]}"
+            except Exception:
+                mcp_note = ""
+
         # Build a single numbered source list (notes then web) and matching context so
         # the model can cite [n] and the UI can show whether each source is a note or
         # a web page.
@@ -151,6 +166,8 @@ def _make_retrieve(deps: AgentDeps):
             idx += 1
 
         context = "\n\n".join(blocks)
+        if mcp_note:
+            context = (context + f"\n\n{mcp_note}").strip()
 
         # The learner profile (weak topics + preferences) always informs the answer.
         memory_summary = state.get("memory_summary", "")

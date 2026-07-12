@@ -150,3 +150,13 @@ export interface ConnectionTestResult {
   detail: string;
   models_available: number | null;
 }
+
+export interface McpServerStatus {
+  name: string;
+  label: string;
+  enabled: boolean;
+  requires: string | null;
+  connected: boolean;
+  tools: string[];
+  error: string | null;
+}

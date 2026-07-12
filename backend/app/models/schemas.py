@@ -147,6 +147,19 @@ class RevisionResponse(BaseModel):
     markdown: str
 
 
+# --- MCP ---
+
+
+class McpServerStatus(BaseModel):
+    name: str
+    label: str
+    enabled: bool
+    requires: str | None
+    connected: bool
+    tools: list[str]
+    error: str | None
+
+
 # --- Memory ---
 
 
