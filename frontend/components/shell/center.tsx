@@ -7,6 +7,9 @@ import {
 } from "lucide-react";
 
 import { ChatView, type Trace } from "@/components/chat/chat-view";
+import { FlashcardsView } from "@/components/study/flashcards-view";
+import { QuizView } from "@/components/study/quiz-view";
+import { RevisionView } from "@/components/study/revision-view";
 import { cn } from "@/lib/utils";
 import type { Workspace } from "@/lib/types";
 
@@ -72,6 +75,18 @@ export function Center({ workspace, mode, onModeChange, onTrace }: CenterProps) 
 
       {mode === "chat" ? (
         <ChatView workspaceId={workspace.id} onTrace={onTrace} />
+      ) : mode === "quiz" ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <QuizView workspaceId={workspace.id} />
+        </div>
+      ) : mode === "flashcards" ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <FlashcardsView workspaceId={workspace.id} />
+        </div>
+      ) : mode === "revision" ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <RevisionView workspaceId={workspace.id} />
+        </div>
       ) : (
         <div className="flex flex-1 items-center justify-center overflow-y-auto px-6 py-10">
           <ModePlaceholder mode={mode} workspace={workspace} />

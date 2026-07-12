@@ -39,6 +39,26 @@ export interface ChatTurn {
   error?: string | null;
 }
 
+export interface QuizQuestion {
+  topic: string;
+  question: string;
+  options: string[];
+  answer_index: number;
+  explanation: string;
+}
+
+export interface QuizScoreResult {
+  correct: number;
+  total: number;
+  score_pct: number;
+  weak_topics_recorded: string[];
+}
+
+export interface Flashcard {
+  front: string;
+  back: string;
+}
+
 export interface MemoryItem {
   id: string;
   workspace_id: string;

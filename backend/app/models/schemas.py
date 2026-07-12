@@ -38,6 +38,66 @@ class WorkspaceRead(BaseModel):
     updated_at: datetime
 
 
+# --- Study artifacts ---
+
+
+class QuizRequest(BaseModel):
+    subject: str = Field(default="", max_length=200)
+    difficulty: str = Field(default="medium")
+    count: int = Field(default=5, ge=1, le=15)
+
+
+class QuizQuestion(BaseModel):
+    topic: str
+    question: str
+    options: list[str]
+    answer_index: int
+    explanation: str
+
+
+class QuizResponse(BaseModel):
+    questions: list[QuizQuestion]
+
+
+class QuizScoreItem(BaseModel):
+    topic: str
+    answer_index: int
+    selected_index: int | None = None
+
+
+class QuizScoreRequest(BaseModel):
+    items: list[QuizScoreItem]
+
+
+class QuizScoreResult(BaseModel):
+    correct: int
+    total: int
+    score_pct: int
+    weak_topics_recorded: list[str]
+
+
+class FlashcardRequest(BaseModel):
+    subject: str = Field(default="", max_length=200)
+    count: int = Field(default=8, ge=1, le=20)
+
+
+class Flashcard(BaseModel):
+    front: str
+    back: str
+
+
+class FlashcardsResponse(BaseModel):
+    cards: list[Flashcard]
+
+
+class RevisionRequest(BaseModel):
+    subject: str = Field(default="", max_length=200)
+
+
+class RevisionResponse(BaseModel):
+    markdown: str
+
+
 # --- Memory ---
 
 

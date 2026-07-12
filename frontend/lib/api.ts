@@ -7,10 +7,13 @@
 import type {
   ConnectionTestResult,
   DocumentItem,
+  Flashcard,
   MemoryItem,
   ProviderMeta,
   ProviderSetting,
   ProviderSettingsUpsert,
+  QuizQuestion,
+  QuizScoreResult,
   Workspace,
   WorkspaceCreate,
 } from "@/lib/types";
@@ -139,5 +142,33 @@ export const api = {
         xhr.onerror = () => reject(new ApiError(0, "Network error"));
         xhr.send(form);
       }),
+  },
+  study: {
+    quiz: (
+      workspaceId: string,
+      data: { subject: string; difficulty: string; count: number },
+    ) =>
+      request<{ questions: QuizQuestion[] }>(
+        `/api/workspaces/${workspaceId}/quiz`,
+        { method: "POST", body: JSON.stringify(data) },
+      ),
+    scoreQuiz: (
+      workspaceId: string,
+      items: { topic: string; answer_index: number; selected_index: number | null }[],
+    ) =>
+      request<QuizScoreResult>(`/api/workspaces/${workspaceId}/quiz/score`, {
+        method: "POST",
+        body: JSON.stringify({ items }),
+      }),
+    flashcards: (workspaceId: string, data: { subject: string; count: number }) =>
+      request<{ cards: Flashcard[] }>(
+        `/api/workspaces/${workspaceId}/flashcards`,
+        { method: "POST", body: JSON.stringify(data) },
+      ),
+    revision: (workspaceId: string, data: { subject: string }) =>
+      request<{ markdown: string }>(
+        `/api/workspaces/${workspaceId}/revision`,
+        { method: "POST", body: JSON.stringify(data) },
+      ),
   },
 };
