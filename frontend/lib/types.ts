@@ -39,6 +39,17 @@ export interface ChatTurn {
   error?: string | null;
 }
 
+export interface MemoryItem {
+  id: string;
+  workspace_id: string;
+  kind: "weak_topic" | "preference" | "note";
+  topic: string | null;
+  content: string;
+  weight: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export type DocumentStatus = "queued" | "processing" | "ready" | "failed";
 
 export interface DocumentItem {

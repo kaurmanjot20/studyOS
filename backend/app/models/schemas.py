@@ -38,6 +38,28 @@ class WorkspaceRead(BaseModel):
     updated_at: datetime
 
 
+# --- Memory ---
+
+
+class MemoryCreate(BaseModel):
+    kind: str = Field(default="note")  # weak_topic | preference | note
+    content: str = Field(min_length=1, max_length=2000)
+    topic: str | None = Field(default=None, max_length=160)
+
+
+class MemoryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    workspace_id: uuid.UUID
+    kind: str
+    topic: str | None
+    content: str
+    weight: int
+    created_at: datetime
+    updated_at: datetime
+
+
 # --- Chat ---
 
 

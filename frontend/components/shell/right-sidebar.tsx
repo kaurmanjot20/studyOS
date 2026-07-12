@@ -1,12 +1,44 @@
+"use client";
+
+import * as React from "react";
 import { BookOpen, Brain, Sparkles, TriangleAlert, UploadCloud } from "lucide-react";
 
-import type { Trace } from "@/components/chat/chat-view";
+import { type Trace } from "@/components/chat/chat-view";
+import { api } from "@/lib/api";
+import type { MemoryItem } from "@/lib/types";
 
-/** Right rail: the planner trace + retrieved sources for the current turn, plus memory /
- * weak-topics / upload placeholders filled in by later phases. */
-export function RightSidebar({ trace }: { trace: Trace }) {
+/** Right rail: planner trace + retrieved sources for the current turn, plus the learner's
+ * memory (weak topics + preferences) that the planner consults before answering. */
+export function RightSidebar({
+  trace,
+  workspaceId,
+}: {
+  trace: Trace;
+  workspaceId: string | null;
+}) {
   const plan = trace.plan;
   const sources = trace.sources ?? [];
+  const [memories, setMemories] = React.useState<MemoryItem[]>([]);
+
+  const refresh = React.useCallback(async () => {
+    if (!workspaceId) {
+      setMemories([]);
+      return;
+    }
+    try {
+      setMemories(await api.memory.list(workspaceId));
+    } catch {
+      /* keep previous on transient error */
+    }
+  }, [workspaceId]);
+
+  // Refresh on workspace change and after each answered turn (memory may have updated).
+  React.useEffect(() => {
+    refresh();
+  }, [refresh, trace.plan]);
+
+  const weakTopics = memories.filter((m) => m.kind === "weak_topic");
+  const profile = memories.filter((m) => m.kind !== "weak_topic");
 
   return (
     <aside className="hidden w-72 shrink-0 flex-col overflow-y-auto border-l border-border bg-card/40 lg:flex">
@@ -24,9 +56,7 @@ export function RightSidebar({ trace }: { trace: Trace }) {
                   </span>
                 ))
               ) : (
-                <span className="text-xs text-muted-foreground/70">
-                  Answered directly (no tools).
-                </span>
+                <Placeholder>Answered directly (no tools).</Placeholder>
               )}
             </div>
             {plan.reasoning && (
@@ -36,7 +66,7 @@ export function RightSidebar({ trace }: { trace: Trace }) {
             )}
           </div>
         ) : (
-          <Placeholder>The planner's decision appears here as it answers.</Placeholder>
+          <Placeholder>The planner&apos;s decision appears here as it answers.</Placeholder>
         )}
       </Section>
 
@@ -67,12 +97,48 @@ export function RightSidebar({ trace }: { trace: Trace }) {
         )}
       </Section>
 
-      <Section icon={<Brain className="size-3.5" />} title="Memory">
-        <Placeholder>What the planner remembers about your preparation.</Placeholder>
-      </Section>
       <Section icon={<TriangleAlert className="size-3.5" />} title="Weak topics">
-        <Placeholder>Topics you miss most, prioritized for revision.</Placeholder>
+        {weakTopics.length > 0 ? (
+          <ul className="space-y-1">
+            {weakTopics.map((m) => (
+              <li
+                key={m.id}
+                className="flex items-center justify-between gap-2 rounded-md border border-border bg-card px-2 py-1 text-xs"
+              >
+                <span className="truncate text-foreground/90">{m.topic}</span>
+                <span
+                  className="shrink-0 rounded-full bg-destructive/15 px-1.5 py-0.5 text-[10px] text-destructive"
+                  title={`Missed ${m.weight} time(s)`}
+                >
+                  ×{m.weight}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <Placeholder>
+            Topics you miss most (from quizzes &amp; interviews) will be prioritized here.
+          </Placeholder>
+        )}
       </Section>
+
+      <Section icon={<Brain className="size-3.5" />} title="Memory">
+        {profile.length > 0 ? (
+          <ul className="space-y-1.5">
+            {profile.map((m) => (
+              <li
+                key={m.id}
+                className="rounded-md border border-border bg-card px-2 py-1.5 text-[11px] leading-relaxed text-muted-foreground"
+              >
+                {m.content}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <Placeholder>Preferences and facts the planner remembers about you.</Placeholder>
+        )}
+      </Section>
+
       <Section icon={<UploadCloud className="size-3.5" />} title="Upload status">
         <Placeholder>Live processing status for uploaded documents.</Placeholder>
       </Section>

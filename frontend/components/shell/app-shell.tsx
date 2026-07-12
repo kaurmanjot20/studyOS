@@ -113,7 +113,7 @@ export function AppShell() {
           onModeChange={setMode}
           onTrace={setTrace}
         />
-        <RightSidebar trace={trace} />
+        <RightSidebar trace={trace} workspaceId={activeWorkspace?.id ?? null} />
       </div>
 
       <CreateWorkspaceDialog

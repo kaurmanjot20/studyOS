@@ -50,3 +50,4 @@ class AgentState(TypedDict, total=False):
     plan: Plan
     sources: list[RetrievedChunk]
     context: str
+    memory_summary: str

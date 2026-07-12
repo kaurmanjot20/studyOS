@@ -33,5 +33,13 @@ Guidance:
 """
 
 
-def planner_user_prompt(question: str) -> str:
-    return f"User question:\n{question}\n\nReturn only the JSON plan."
+def planner_user_prompt(question: str, memory_summary: str = "") -> str:
+    memory_block = (
+        f"\n\nWhat we know about this learner (use to prioritize and personalize):\n"
+        f"{memory_summary}"
+        if memory_summary
+        else ""
+    )
+    return (
+        f"User question:\n{question}{memory_block}\n\nReturn only the JSON plan."
+    )

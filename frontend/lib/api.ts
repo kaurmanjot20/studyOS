@@ -7,6 +7,7 @@
 import type {
   ConnectionTestResult,
   DocumentItem,
+  MemoryItem,
   ProviderMeta,
   ProviderSetting,
   ProviderSettingsUpsert,
@@ -85,6 +86,20 @@ export const api = {
       request<{ models: string[] }>(
         `/api/settings/models?provider=${encodeURIComponent(provider)}`,
       ),
+  },
+  memory: {
+    list: (workspaceId: string) =>
+      request<MemoryItem[]>(`/api/workspaces/${workspaceId}/memory`),
+    add: (
+      workspaceId: string,
+      data: { kind: string; content: string; topic?: string | null },
+    ) =>
+      request<MemoryItem>(`/api/workspaces/${workspaceId}/memory`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    remove: (id: string) =>
+      request<void>(`/api/memory/${id}`, { method: "DELETE" }),
   },
   documents: {
     list: (workspaceId: string) =>

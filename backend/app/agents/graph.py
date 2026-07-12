@@ -19,6 +19,7 @@ from langgraph.graph import END, StateGraph
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.state import AgentState, Plan
+from app.memory.service import MemoryService
 from app.prompts.planner import PLANNER_SYSTEM, planner_user_prompt
 from app.providers.base import ChatMessage, LLMProvider
 from app.rag.retrieval import assemble_context, retrieve
@@ -60,11 +61,17 @@ def _parse_plan(text: str, question: str) -> Plan:
 def _make_planner(deps: AgentDeps):
     async def planner(state: AgentState) -> dict:
         question = state["question"]
+        workspace_id = uuid.UUID(state["workspace_id"])
+        # The planner consults memory before deciding how to answer.
+        memory_summary = await MemoryService(deps.db).planning_summary(workspace_id)
         try:
             result = await deps.provider.chat(
                 [
                     ChatMessage(role="system", content=PLANNER_SYSTEM),
-                    ChatMessage(role="user", content=planner_user_prompt(question)),
+                    ChatMessage(
+                        role="user",
+                        content=planner_user_prompt(question, memory_summary),
+                    ),
                 ],
                 model=deps.chat_model,
                 temperature=0,
@@ -76,7 +83,7 @@ def _make_planner(deps: AgentDeps):
                 tools=["search_notes"],
                 reasoning="Planner unavailable; defaulted to note search.",
             )
-        return {"plan": plan}
+        return {"plan": plan, "memory_summary": memory_summary}
 
     return planner
 
@@ -84,16 +91,19 @@ def _make_planner(deps: AgentDeps):
 def _make_retrieve(deps: AgentDeps):
     async def retrieve_node(state: AgentState) -> dict:
         plan: Plan = state["plan"]
+        tools = plan.normalized_tools()
+        workspace_id = uuid.UUID(state["workspace_id"])
         sources = []
-        # Only search_notes is implemented in Phase 4; other tools are recognised
-        # by the planner and wired in their own phases.
         embedder = deps.embedder or deps.provider
-        if "search_notes" in plan.normalized_tools() and deps.embedding_model:
+
+        # search_notes (RAG) and search_memory are wired; search_web/search_resume
+        # are recognised by the planner and implemented in their own phases.
+        if "search_notes" in tools and deps.embedding_model:
             try:
                 sources = await retrieve(
                     deps.db,
                     embedder,
-                    workspace_id=uuid.UUID(state["workspace_id"]),
+                    workspace_id=workspace_id,
                     query=plan.rewritten_query,
                     embedding_model=deps.embedding_model,
                 )
@@ -101,7 +111,24 @@ def _make_retrieve(deps: AgentDeps):
                 # Retrieval failure (e.g. embeddings unavailable) shouldn't abort the
                 # turn — degrade to an ungrounded answer rather than erroring out.
                 sources = []
-        return {"sources": sources, "context": assemble_context(sources)}
+
+        context = assemble_context(sources)
+
+        # The learner profile (weak topics + preferences) always informs the answer.
+        memory_summary = state.get("memory_summary", "")
+        if memory_summary:
+            context = (f"Learner profile: {memory_summary}\n\n" + context).strip()
+
+        # search_memory additionally pulls specific relevant memories into context.
+        if "search_memory" in tools:
+            memories = await MemoryService(deps.db).search(
+                workspace_id, plan.rewritten_query
+            )
+            if memories:
+                lines = "\n".join(f"- {m.content}" for m in memories)
+                context = (context + f"\n\nKnown about the learner:\n{lines}").strip()
+
+        return {"sources": sources, "context": context}
 
     return retrieve_node
 
