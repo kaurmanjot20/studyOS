@@ -6,6 +6,7 @@ import { Center, type WorkspaceMode } from "@/components/shell/center";
 import { LeftSidebar } from "@/components/shell/left-sidebar";
 import { RightSidebar } from "@/components/shell/right-sidebar";
 import { TopNav } from "@/components/shell/top-nav";
+import { SettingsDialog } from "@/components/settings/settings-dialog";
 import { CreateWorkspaceDialog } from "@/components/workspace/create-workspace-dialog";
 import { api, ApiError } from "@/lib/api";
 import type { Workspace, WorkspaceCreate } from "@/lib/types";
@@ -19,6 +20,24 @@ export function AppShell() {
   const [error, setError] = React.useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [activeProviderLabel, setActiveProviderLabel] = React.useState<
+    string | null
+  >(null);
+
+  const loadActiveProvider = React.useCallback(async () => {
+    try {
+      const [settings, providers] = await Promise.all([
+        api.settings.list(),
+        api.settings.providers(),
+      ]);
+      const active = settings.find((s) => s.is_active);
+      const label = providers.find((p) => p.name === active?.provider)?.label;
+      setActiveProviderLabel(label ?? null);
+    } catch {
+      setActiveProviderLabel(null);
+    }
+  }, []);
 
   const loadWorkspaces = React.useCallback(async () => {
     setLoading(true);
@@ -40,7 +59,8 @@ export function AppShell() {
 
   React.useEffect(() => {
     loadWorkspaces();
-  }, [loadWorkspaces]);
+    loadActiveProvider();
+  }, [loadWorkspaces, loadActiveProvider]);
 
   const handleCreate = async (data: WorkspaceCreate) => {
     setSubmitting(true);
@@ -63,7 +83,9 @@ export function AppShell() {
     <div className="flex h-screen flex-col overflow-hidden">
       <TopNav
         activeWorkspace={activeWorkspace}
+        activeProviderLabel={activeProviderLabel}
         onOpenWorkspaces={() => setDialogOpen(true)}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
 
       {error && (
@@ -96,6 +118,12 @@ export function AppShell() {
         submitting={submitting}
         onClose={() => setDialogOpen(false)}
         onSubmit={handleCreate}
+      />
+
+      <SettingsDialog
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onSaved={loadActiveProvider}
       />
     </div>
   );

@@ -9,9 +9,10 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from app.api import health, workspaces
+from app.api import health, settings, workspaces
 
 
 def register_routers(app: FastAPI) -> None:
     app.include_router(health.router)
     app.include_router(workspaces.router, prefix="/api/workspaces")
+    app.include_router(settings.router, prefix="/api/settings")

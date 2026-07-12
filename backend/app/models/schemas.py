@@ -36,3 +36,53 @@ class WorkspaceRead(BaseModel):
     color: str | None
     created_at: datetime
     updated_at: datetime
+
+
+# --- Provider settings ---
+
+
+class ProviderMetaRead(BaseModel):
+    name: str
+    label: str
+    requires_api_key: bool
+    supports_embeddings: bool
+    default_base_url: str | None = None
+
+
+class ProviderSettingsUpsert(BaseModel):
+    provider: str = Field(min_length=1, max_length=32)
+    # Omit to keep an existing key; empty string clears it.
+    api_key: str | None = None
+    chat_model: str | None = Field(default=None, max_length=120)
+    embedding_model: str | None = Field(default=None, max_length=120)
+    base_url: str | None = Field(default=None, max_length=300)
+    set_active: bool = True
+
+
+class ProviderSettingsRead(BaseModel):
+    provider: str
+    chat_model: str | None
+    embedding_model: str | None
+    base_url: str | None
+    is_active: bool
+    has_api_key: bool
+
+    created_at: datetime
+    updated_at: datetime
+
+
+class ConnectionTestRequest(BaseModel):
+    provider: str = Field(min_length=1, max_length=32)
+    api_key: str | None = None
+    chat_model: str | None = None
+    base_url: str | None = None
+
+
+class ConnectionTestResult(BaseModel):
+    ok: bool
+    detail: str
+    models_available: int | None = None
+
+
+class ModelListResult(BaseModel):
+    models: list[str]

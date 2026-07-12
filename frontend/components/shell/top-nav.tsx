@@ -5,11 +5,18 @@ import type { Workspace } from "@/lib/types";
 
 interface TopNavProps {
   activeWorkspace: Workspace | null;
+  activeProviderLabel: string | null;
   onOpenWorkspaces: () => void;
+  onOpenSettings: () => void;
 }
 
 /** Top bar: workspace selector, command search, provider status, settings. */
-export function TopNav({ activeWorkspace, onOpenWorkspaces }: TopNavProps) {
+export function TopNav({
+  activeWorkspace,
+  activeProviderLabel,
+  onOpenWorkspaces,
+  onOpenSettings,
+}: TopNavProps) {
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border px-3">
       <div className="flex items-center gap-2 pr-1">
@@ -40,10 +47,25 @@ export function TopNav({ activeWorkspace, onOpenWorkspaces }: TopNavProps) {
       </div>
 
       <div className="ml-auto flex items-center gap-1">
-        <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
-          No provider
-        </span>
-        <Button variant="ghost" size="icon" aria-label="Settings">
+        <button
+          onClick={onOpenSettings}
+          className="flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground hover:bg-secondary"
+        >
+          <span
+            className={
+              activeProviderLabel
+                ? "size-1.5 rounded-full bg-emerald-500"
+                : "size-1.5 rounded-full bg-muted-foreground/50"
+            }
+          />
+          {activeProviderLabel ?? "No provider"}
+        </button>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Settings"
+          onClick={onOpenSettings}
+        >
           <Settings className="size-4" />
         </Button>
       </div>
