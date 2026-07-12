@@ -100,8 +100,8 @@ export function ChatView({ workspaceId, onTrace }: ChatViewProps) {
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-4 py-6">
           {turns.length === 0 ? (
             <EmptyState onPick={send} />
@@ -236,7 +236,7 @@ function Composer({
   onSend: () => void;
 }) {
   return (
-    <div className="border-t border-border px-4 py-3">
+    <div className="shrink-0 border-t border-border bg-background px-4 py-3">
       <div className="mx-auto flex max-w-3xl items-end gap-2">
         <textarea
           value={value}
