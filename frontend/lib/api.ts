@@ -17,6 +17,7 @@ import type {
   ProviderSetting,
   ProviderSettingsUpsert,
   QuizScoreResult,
+  SearchResults,
   StudyArtifact,
   Workspace,
   WorkspaceCreate,
@@ -191,6 +192,8 @@ export const api = {
   mcp: {
     servers: () => request<McpServerStatus[]>("/api/mcp/servers"),
   },
+  search: (q: string) =>
+    request<SearchResults>(`/api/search?q=${encodeURIComponent(q)}`),
   chat: {
     sessions: (workspaceId: string) =>
       request<ChatSessionRecord[]>(

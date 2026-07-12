@@ -15,6 +15,18 @@ export interface WorkspaceCreate {
   color?: string | null;
 }
 
+export interface SearchHit {
+  id: string;
+  label: string;
+  workspace_id?: string;
+}
+
+export interface SearchResults {
+  workspaces: SearchHit[];
+  documents: SearchHit[];
+  chats: SearchHit[];
+}
+
 export interface Source {
   index: number;
   kind: "note" | "web";

@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { type Trace } from "@/components/chat/chat-view";
+import { GlobalSearch } from "@/components/search/global-search";
 import { Center, type WorkspaceMode } from "@/components/shell/center";
 import { LeftSidebar } from "@/components/shell/left-sidebar";
 import { RightSidebar } from "@/components/shell/right-sidebar";
@@ -26,6 +27,19 @@ export function AppShell() {
     string | null
   >(null);
   const [trace, setTrace] = React.useState<Trace>({ plan: null, sources: [] });
+  const [searchOpen, setSearchOpen] = React.useState(false);
+
+  // Global search keyboard shortcut (Ctrl/Cmd + K).
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const loadActiveProvider = React.useCallback(async () => {
     try {
@@ -88,6 +102,7 @@ export function AppShell() {
         activeProviderLabel={activeProviderLabel}
         onOpenWorkspaces={() => setDialogOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenSearch={() => setSearchOpen(true)}
       />
 
       {error && (
@@ -127,6 +142,15 @@ export function AppShell() {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         onSaved={loadActiveProvider}
+      />
+
+      <GlobalSearch
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onNavigate={({ workspaceId, mode }) => {
+          setActiveId(workspaceId);
+          if (mode) setMode(mode);
+        }}
       />
     </div>
   );

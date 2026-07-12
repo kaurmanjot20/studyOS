@@ -16,6 +16,7 @@ from app.api import (
     interview,
     mcp,
     memory,
+    search,
     settings,
     study,
     workspaces,
@@ -32,3 +33,4 @@ def register_routers(app: FastAPI) -> None:
     app.include_router(study.router, prefix="/api")
     app.include_router(interview.router, prefix="/api")
     app.include_router(mcp.router, prefix="/api/mcp")
+    app.include_router(search.router, prefix="/api")

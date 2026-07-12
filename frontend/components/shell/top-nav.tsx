@@ -8,14 +8,16 @@ interface TopNavProps {
   activeProviderLabel: string | null;
   onOpenWorkspaces: () => void;
   onOpenSettings: () => void;
+  onOpenSearch: () => void;
 }
 
-/** Top bar: workspace selector, command search, provider status, settings. */
+/** Top bar: workspace selector, global search, provider status, settings. */
 export function TopNav({
   activeWorkspace,
   activeProviderLabel,
   onOpenWorkspaces,
   onOpenSettings,
+  onOpenSearch,
 }: TopNavProps) {
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border px-3">
@@ -39,13 +41,13 @@ export function TopNav({
       </button>
 
       <div className="mx-auto flex w-full max-w-md items-center">
-        <div className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm text-muted-foreground">
+        <button
+          onClick={onOpenSearch}
+          className="flex w-full items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:border-muted-foreground/40 hover:text-foreground"
+        >
           <Search className="size-3.5" />
-          <span className="flex-1">Search workspace…</span>
-          <kbd className="rounded border border-border bg-secondary px-1.5 py-0.5 font-mono text-[10px]">
-            ⌘K
-          </kbd>
-        </div>
+          <span className="flex-1 text-left">Search everything…</span>
+        </button>
       </div>
 
       <div className="ml-auto flex items-center gap-1">
