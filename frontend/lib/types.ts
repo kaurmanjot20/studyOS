@@ -15,6 +15,25 @@ export interface WorkspaceCreate {
   color?: string | null;
 }
 
+export type DocumentStatus = "queued" | "processing" | "ready" | "failed";
+
+export interface DocumentItem {
+  id: string;
+  workspace_id: string;
+  filename: string;
+  content_type: string | null;
+  size_bytes: number;
+  status: DocumentStatus;
+  error: string | null;
+  title: string | null;
+  page_count: number | null;
+  word_count: number | null;
+  chunk_count: number;
+  embedding_model: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ProviderMeta {
   name: string;
   label: string;

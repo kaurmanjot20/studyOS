@@ -1,5 +1,6 @@
-import { FileText, Folder, Layers, Plus } from "lucide-react";
+import { Folder, Plus } from "lucide-react";
 
+import { DocumentsSection } from "@/components/documents/documents-section";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Workspace } from "@/lib/types";
@@ -37,7 +38,7 @@ export function LeftSidebar({
         </Button>
       </div>
 
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-1">
+      <nav className="max-h-[45%] space-y-0.5 overflow-y-auto px-2 py-1">
         {loading ? (
           <SidebarSkeleton />
         ) : workspaces.length === 0 ? (
@@ -63,26 +64,10 @@ export function LeftSidebar({
         )}
       </nav>
 
-      <div className="border-t border-border px-2 py-2">
-        <SidebarLink icon={<Layers className="size-3.5" />} label="Subjects" />
-        <SidebarLink icon={<FileText className="size-3.5" />} label="Documents" />
+      <div className="flex min-h-0 flex-1 flex-col border-t border-border px-2 py-2">
+        <DocumentsSection workspaceId={activeWorkspaceId} />
       </div>
     </aside>
-  );
-}
-
-function SidebarLink({
-  icon,
-  label,
-}: {
-  icon: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground">
-      {icon}
-      <span>{label}</span>
-    </div>
   );
 }
 

@@ -38,6 +38,28 @@ class WorkspaceRead(BaseModel):
     updated_at: datetime
 
 
+# --- Documents ---
+
+
+class DocumentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    workspace_id: uuid.UUID
+    filename: str
+    content_type: str | None
+    size_bytes: int
+    status: str
+    error: str | None
+    title: str | None
+    page_count: int | None
+    word_count: int | None
+    chunk_count: int
+    embedding_model: str | None
+    created_at: datetime
+    updated_at: datetime
+
+
 # --- Provider settings ---
 
 

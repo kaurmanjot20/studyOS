@@ -6,6 +6,7 @@
  */
 import type {
   ConnectionTestResult,
+  DocumentItem,
   ProviderMeta,
   ProviderSetting,
   ProviderSettingsUpsert,
@@ -84,5 +85,44 @@ export const api = {
       request<{ models: string[] }>(
         `/api/settings/models?provider=${encodeURIComponent(provider)}`,
       ),
+  },
+  documents: {
+    list: (workspaceId: string) =>
+      request<DocumentItem[]>(`/api/workspaces/${workspaceId}/documents`),
+    get: (id: string) => request<DocumentItem>(`/api/documents/${id}`),
+    remove: (id: string) =>
+      request<void>(`/api/documents/${id}`, { method: "DELETE" }),
+    // Upload uses XHR (not fetch) to report progress events.
+    upload: (
+      workspaceId: string,
+      file: File,
+      onProgress?: (percent: number) => void,
+    ) =>
+      new Promise<DocumentItem>((resolve, reject) => {
+        const form = new FormData();
+        form.append("file", file);
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `${BASE_URL}/api/workspaces/${workspaceId}/documents`);
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable && onProgress) {
+            onProgress(Math.round((e.loaded / e.total) * 100));
+          }
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(JSON.parse(xhr.responseText) as DocumentItem);
+          } else {
+            let detail = xhr.statusText;
+            try {
+              detail = JSON.parse(xhr.responseText).detail ?? detail;
+            } catch {
+              /* non-JSON */
+            }
+            reject(new ApiError(xhr.status, detail));
+          }
+        };
+        xhr.onerror = () => reject(new ApiError(0, "Network error"));
+        xhr.send(form);
+      }),
   },
 };

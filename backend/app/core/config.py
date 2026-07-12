@@ -43,6 +43,17 @@ class Settings(BaseSettings):
     default_llm_provider: ProviderName = "openai"
     default_llm_model: str = "gpt-4o-mini"
     default_embedding_model: str = "text-embedding-3-small"
+    # pgvector columns need a fixed dimension. This is the indexed vector size; the
+    # embed model + actual dim are also recorded per document, and changing this
+    # requires re-embedding. 1536 = OpenAI text-embedding-3-small.
+    embedding_dim: int = 1536
+
+    # --- Document pipeline ---
+    storage_dir: str = "storage"
+    max_upload_mb: int = 25
+    chunk_size_chars: int = 1200
+    chunk_overlap_chars: int = 180
+    embed_batch_size: int = 64
     openai_api_key: str = ""
     anthropic_api_key: str = ""
     gemini_api_key: str = ""
