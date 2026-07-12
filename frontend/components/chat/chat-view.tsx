@@ -1,13 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { ArrowUp, Sparkles } from "lucide-react";
+import { ArrowUp, Plus, Sparkles } from "lucide-react";
 
 import { Markdown } from "@/components/chat/markdown";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 import { streamChat } from "@/lib/chat-stream";
 import { cn } from "@/lib/utils";
-import type { ChatTurn, PlanTrace, Source } from "@/lib/types";
+import type {
+  ChatSessionRecord,
+  ChatTurn,
+  PlanTrace,
+  Source,
+} from "@/lib/types";
 
 export interface Trace {
   plan?: PlanTrace | null;
@@ -29,15 +35,51 @@ export function ChatView({ workspaceId, onTrace }: ChatViewProps) {
   const [turns, setTurns] = React.useState<ChatTurn[]>([]);
   const [input, setInput] = React.useState("");
   const [busy, setBusy] = React.useState(false);
+  const [sessions, setSessions] = React.useState<ChatSessionRecord[]>([]);
   const sessionId = React.useRef<string | null>(null);
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
-  // New workspace → fresh conversation.
-  React.useEffect(() => {
+  const loadSessions = React.useCallback(async () => {
+    try {
+      setSessions(await api.chat.sessions(workspaceId));
+    } catch {
+      setSessions([]);
+    }
+  }, [workspaceId]);
+
+  const newChat = React.useCallback(() => {
     setTurns([]);
     sessionId.current = null;
     onTrace({ plan: null, sources: [] });
-  }, [workspaceId, onTrace]);
+  }, [onTrace]);
+
+  // New workspace → fresh conversation + load its past sessions.
+  React.useEffect(() => {
+    newChat();
+    loadSessions();
+  }, [workspaceId, newChat, loadSessions]);
+
+  const openSession = async (id: string) => {
+    try {
+      const messages = await api.chat.messages(id);
+      sessionId.current = id;
+      setTurns(
+        messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+          plan: m.plan,
+          sources: m.sources ?? [],
+        })),
+      );
+      const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+      onTrace({
+        plan: lastAssistant?.plan ?? null,
+        sources: lastAssistant?.sources ?? [],
+      });
+    } catch {
+      /* ignore */
+    }
+  };
 
   React.useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
@@ -90,8 +132,10 @@ export function ChatView({ workspaceId, onTrace }: ChatViewProps) {
           }),
         onError: (detail) => patchLast({ error: detail, streaming: false }),
         onDone: (info) => {
+          const isNew = sessionId.current === null;
           sessionId.current = info.session_id;
           patchLast({ streaming: false });
+          if (isNew) loadSessions();
         },
       },
     ).catch((e) => patchLast({ error: String(e), streaming: false }));
@@ -101,6 +145,26 @@ export function ChatView({ workspaceId, onTrace }: ChatViewProps) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex items-center gap-2 border-b border-border px-3 py-1.5">
+        <Button variant="ghost" size="sm" className="gap-1.5" onClick={newChat}>
+          <Plus className="size-3.5" /> New chat
+        </Button>
+        {sessions.length > 0 && (
+          <select
+            value={sessionId.current ?? ""}
+            onChange={(e) => e.target.value && openSession(e.target.value)}
+            className="ml-auto h-7 max-w-[240px] rounded-md border border-input bg-transparent px-2 text-xs text-muted-foreground"
+          >
+            <option value="">History ({sessions.length})…</option>
+            {sessions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.title || "Untitled chat"} · {new Date(s.created_at).toLocaleDateString()}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-4 py-6">
           {turns.length === 0 ? (

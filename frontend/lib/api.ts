@@ -5,12 +5,14 @@
  * helpers rather than calling `fetch` directly.
  */
 import type {
+  ChatSessionRecord,
   ConnectionTestResult,
   DocumentItem,
   Flashcard,
   InterviewSession,
   McpServerStatus,
   MemoryItem,
+  MessageRecord,
   ProviderMeta,
   ProviderSetting,
   ProviderSettingsUpsert,
@@ -175,6 +177,14 @@ export const api = {
   },
   mcp: {
     servers: () => request<McpServerStatus[]>("/api/mcp/servers"),
+  },
+  chat: {
+    sessions: (workspaceId: string) =>
+      request<ChatSessionRecord[]>(
+        `/api/workspaces/${workspaceId}/chat/sessions`,
+      ),
+    messages: (sessionId: string) =>
+      request<MessageRecord[]>(`/api/chat/sessions/${sessionId}/messages`),
   },
   interview: {
     start: (

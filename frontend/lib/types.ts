@@ -43,6 +43,24 @@ export interface ChatTurn {
   error?: string | null;
 }
 
+export interface ChatSessionRecord {
+  id: string;
+  workspace_id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MessageRecord {
+  id: string;
+  session_id: string;
+  role: "user" | "assistant";
+  content: string;
+  sources: Source[] | null;
+  plan: PlanTrace | null;
+  created_at: string;
+}
+
 export interface InterviewTurn {
   question: string;
   topic: string;
