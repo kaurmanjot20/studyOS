@@ -18,11 +18,13 @@ from dataclasses import dataclass
 from langgraph.graph import END, StateGraph
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.agents.state import AgentState, Plan
 from app.memory.service import MemoryService
 from app.prompts.planner import PLANNER_SYSTEM, planner_user_prompt
 from app.providers.base import ChatMessage, LLMProvider
-from app.rag.retrieval import assemble_context, retrieve
+from app.rag.retrieval import retrieve
+from app.services.web_search import search_web
 
 
 @dataclass
@@ -93,14 +95,12 @@ def _make_retrieve(deps: AgentDeps):
         plan: Plan = state["plan"]
         tools = plan.normalized_tools()
         workspace_id = uuid.UUID(state["workspace_id"])
-        sources = []
         embedder = deps.embedder or deps.provider
 
-        # search_notes (RAG) and search_memory are wired; search_web/search_resume
-        # are recognised by the planner and implemented in their own phases.
+        note_chunks = []
         if "search_notes" in tools and deps.embedding_model:
             try:
-                sources = await retrieve(
+                note_chunks = await retrieve(
                     deps.db,
                     embedder,
                     workspace_id=workspace_id,
@@ -110,9 +110,47 @@ def _make_retrieve(deps: AgentDeps):
             except Exception:
                 # Retrieval failure (e.g. embeddings unavailable) shouldn't abort the
                 # turn — degrade to an ungrounded answer rather than erroring out.
-                sources = []
+                note_chunks = []
 
-        context = assemble_context(sources)
+        web_results = []
+        if "search_web" in tools and settings.web_search_enabled:
+            web_results = await search_web(plan.rewritten_query)
+
+        # Build a single numbered source list (notes then web) and matching context so
+        # the model can cite [n] and the UI can show whether each source is a note or
+        # a web page.
+        sources: list[dict] = []
+        blocks: list[str] = []
+        idx = 1
+        for ch in note_chunks:
+            snippet = ch.content.strip().replace("\n", " ")
+            sources.append(
+                {
+                    "index": idx,
+                    "kind": "note",
+                    "filename": ch.filename,
+                    "page": ch.page,
+                    "score": ch.score,
+                    "snippet": snippet[:240] + ("…" if len(snippet) > 240 else ""),
+                }
+            )
+            loc = ch.filename + (f", p.{ch.page}" if ch.page else "")
+            blocks.append(f"[{idx}] (notes: {loc})\n{ch.content.strip()}")
+            idx += 1
+        for w in web_results:
+            sources.append(
+                {
+                    "index": idx,
+                    "kind": "web",
+                    "title": w["title"],
+                    "url": w["url"],
+                    "snippet": w["snippet"][:240],
+                }
+            )
+            blocks.append(f"[{idx}] (web: {w['title']} — {w['url']})\n{w['snippet']}")
+            idx += 1
+
+        context = "\n\n".join(blocks)
 
         # The learner profile (weak topics + preferences) always informs the answer.
         memory_summary = state.get("memory_summary", "")

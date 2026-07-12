@@ -167,17 +167,32 @@ function TurnView({ turn }: { turn: ChatTurn }) {
 
       {turn.sources && turn.sources.length > 0 && (
         <div className="flex flex-wrap gap-1.5 pt-1">
-          {turn.sources.map((s) => (
-            <span
-              key={s.index}
-              title={s.snippet}
-              className="inline-flex items-center gap-1 rounded border border-border bg-card px-1.5 py-0.5 text-[11px] text-muted-foreground"
-            >
-              <span className="text-accent">[{s.index}]</span>
-              <span className="max-w-[160px] truncate">{s.filename}</span>
-              {s.page && <span className="opacity-60">p.{s.page}</span>}
-            </span>
-          ))}
+          {turn.sources.map((s) =>
+            s.kind === "web" ? (
+              <a
+                key={s.index}
+                href={s.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={s.snippet}
+                className="inline-flex items-center gap-1 rounded border border-border bg-card px-1.5 py-0.5 text-[11px] text-muted-foreground hover:border-accent/50"
+              >
+                <span className="text-accent">[{s.index}]</span>
+                <span className="rounded bg-secondary px-1 text-[9px] uppercase">web</span>
+                <span className="max-w-[160px] truncate">{s.title}</span>
+              </a>
+            ) : (
+              <span
+                key={s.index}
+                title={s.snippet}
+                className="inline-flex items-center gap-1 rounded border border-border bg-card px-1.5 py-0.5 text-[11px] text-muted-foreground"
+              >
+                <span className="text-accent">[{s.index}]</span>
+                <span className="max-w-[160px] truncate">{s.filename}</span>
+                {s.page && <span className="opacity-60">p.{s.page}</span>}
+              </span>
+            ),
+          )}
         </div>
       )}
     </div>

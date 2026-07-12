@@ -77,12 +77,23 @@ export function RightSidebar({
               <li key={s.index} className="rounded-md border border-border bg-card p-2">
                 <div className="mb-1 flex items-center gap-1.5 text-xs">
                   <span className="text-accent">[{s.index}]</span>
-                  <span className="flex-1 truncate font-medium text-foreground/90">
-                    {s.filename}
-                  </span>
-                  {s.page && (
-                    <span className="text-[10px] text-muted-foreground">p.{s.page}</span>
+                  {s.kind === "web" ? (
+                    <a
+                      href={s.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 truncate font-medium text-foreground/90 underline decoration-border underline-offset-2 hover:decoration-accent"
+                    >
+                      {s.title}
+                    </a>
+                  ) : (
+                    <span className="flex-1 truncate font-medium text-foreground/90">
+                      {s.filename}
+                    </span>
                   )}
+                  <span className="shrink-0 rounded bg-secondary px-1 text-[9px] uppercase text-muted-foreground">
+                    {s.kind === "web" ? "web" : s.page ? `p.${s.page}` : "note"}
+                  </span>
                 </div>
                 <p className="line-clamp-3 text-[11px] leading-relaxed text-muted-foreground">
                   {s.snippet}

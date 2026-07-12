@@ -23,7 +23,6 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.graph import AgentDeps, build_agent
-from app.agents.state import RetrievedChunk
 from app.db.session import SessionFactory, get_db
 from app.models.schemas import ChatRequest, ChatSessionRead, MessageRead
 from app.prompts.synthesis import SYNTHESIS_SYSTEM, synthesis_user_prompt
@@ -38,18 +37,6 @@ router = APIRouter(tags=["chat"])
 
 def _sse(event: str, data) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
-
-
-def _source_dict(index: int, chunk: RetrievedChunk) -> dict:
-    snippet = chunk.content.strip().replace("\n", " ")
-    return {
-        "index": index,
-        "document_id": str(chunk.document_id),
-        "filename": chunk.filename,
-        "page": chunk.page,
-        "score": chunk.score,
-        "snippet": snippet[:240] + ("…" if len(snippet) > 240 else ""),
-    }
 
 
 async def _run_chat(workspace_id: uuid.UUID, payload: ChatRequest) -> AsyncIterator[str]:
@@ -87,7 +74,7 @@ async def _run_chat(workspace_id: uuid.UUID, payload: ChatRequest) -> AsyncItera
             return
 
         plan = state["plan"]
-        sources: list[RetrievedChunk] = state.get("sources", [])
+        sources: list[dict] = state.get("sources", [])
         context: str = state.get("context", "")
 
         yield _sse(
@@ -98,8 +85,7 @@ async def _run_chat(workspace_id: uuid.UUID, payload: ChatRequest) -> AsyncItera
                 "rewritten_query": plan.rewritten_query,
             },
         )
-        source_dicts = [_source_dict(i, s) for i, s in enumerate(sources, start=1)]
-        yield _sse("sources", source_dicts)
+        yield _sse("sources", sources)
 
         synthesis_messages = [
             ChatMessage(role="system", content=SYNTHESIS_SYSTEM),
@@ -141,7 +127,7 @@ async def _run_chat(workspace_id: uuid.UUID, payload: ChatRequest) -> AsyncItera
             session.id,
             "assistant",
             answer,
-            sources=source_dicts,
+            sources=sources,
             plan={
                 "reasoning": plan.reasoning,
                 "tools": plan.normalized_tools(),

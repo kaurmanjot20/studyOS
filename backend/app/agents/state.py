@@ -48,6 +48,8 @@ class AgentState(TypedDict, total=False):
     question: str
     workspace_id: str
     plan: Plan
-    sources: list[RetrievedChunk]
+    # Unified, numbered sources for citation: each is a dict with a "kind"
+    # ("note" | "web") plus display fields. See graph.retrieve_node.
+    sources: list[dict]
     context: str
     memory_summary: str

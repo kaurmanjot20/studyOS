@@ -17,11 +17,15 @@ export interface WorkspaceCreate {
 
 export interface Source {
   index: number;
-  document_id: string;
-  filename: string;
-  page: number | null;
-  score: number;
+  kind: "note" | "web";
   snippet: string;
+  // note sources
+  filename?: string;
+  page?: number | null;
+  score?: number;
+  // web sources
+  title?: string;
+  url?: string;
 }
 
 export interface PlanTrace {

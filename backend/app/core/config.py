@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     # OpenRouter reserves credits for the full context unless max_tokens is set).
     default_max_tokens: int = 2048
 
+    # --- Web search (DuckDuckGo, no key required) ---
+    web_search_enabled: bool = True
+    web_search_max_results: int = 4
+
     # --- Document pipeline ---
     storage_dir: str = "storage"
     max_upload_mb: int = 25

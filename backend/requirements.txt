@@ -15,6 +15,7 @@ greenlet==3.1.1
 
 # --- HTTP (provider adapters, web search) ---
 httpx==0.28.1
+beautifulsoup4==4.12.3
 
 # --- Crypto (encrypt user provider keys at rest) ---
 cryptography==44.0.0
