@@ -82,9 +82,17 @@
     text-rendering: optimizeLegibility;
   }
 
+  /* Headings use the display face with tightened tracking for a premium feel. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
   /* Text selection uses the accent. */
   ::selection {
-    background: hsl(var(--accent) / 0.3);
+    background: hsl(var(--accent) / 0.35);
   }
 }
 

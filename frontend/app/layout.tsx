@@ -1,8 +1,17 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { JetBrains_Mono, Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+// Body/UI — refined, premium, not the ubiquitous Inter.
+const sans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
+// Display — brand + headings, with character.
+const display = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-display",
+});
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
@@ -18,7 +27,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${mono.variable} font-sans antialiased`}>
+      <body
+        className={`${sans.variable} ${display.variable} ${mono.variable} font-sans antialiased`}
+      >
         {children}
       </body>
     </html>

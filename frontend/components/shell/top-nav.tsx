@@ -20,10 +20,12 @@ export function TopNav({
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border px-3">
       <div className="flex items-center gap-2 pr-1">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent/15 text-accent">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent text-accent-foreground">
           <Sparkles className="size-3.5" />
         </div>
-        <span className="text-sm font-semibold tracking-tight">StudyOS</span>
+        <span className="font-display text-[15px] font-semibold tracking-tight">
+          StudyOS
+        </span>
       </div>
 
       <div className="h-4 w-px bg-border" />
