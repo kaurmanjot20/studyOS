@@ -63,6 +63,12 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
 
+    # --- Local fallback (used when the active provider is rate-limited) ---
+    enable_local_fallback: bool = True
+    fallback_provider: ProviderName = "ollama"
+    fallback_model: str = "llama3.2"
+    fallback_embedding_model: str = "nomic-embed-text"
+
     # --- CORS ---
     cors_origins: str = "http://localhost:3000"
 

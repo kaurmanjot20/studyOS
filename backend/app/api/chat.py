@@ -28,7 +28,6 @@ from app.db.session import SessionFactory, get_db
 from app.models.schemas import ChatRequest, ChatSessionRead, MessageRead
 from app.prompts.synthesis import SYNTHESIS_SYSTEM, synthesis_user_prompt
 from app.providers.base import ChatMessage
-from app.providers.factory import build_provider
 from app.services.chat_service import ChatService
 from app.services.provider_service import ProviderService
 from app.services.workspace_service import WorkspaceNotFound, WorkspaceService
@@ -54,8 +53,10 @@ def _source_dict(index: int, chunk: RetrievedChunk) -> dict:
 
 async def _run_chat(workspace_id: uuid.UUID, payload: ChatRequest) -> AsyncIterator[str]:
     async with SessionFactory() as db:
-        config = await ProviderService(db).resolve_active_config()
-        provider = build_provider(config)
+        provider_service = ProviderService(db)
+        config = await provider_service.resolve_active_config()
+        # Wraps the active provider with a local fallback on rate limits (if enabled).
+        provider = await provider_service.resolve_active_provider(config)
         chat_service = ChatService(db)
 
         session = await chat_service.get_or_create_session(

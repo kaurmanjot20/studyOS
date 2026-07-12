@@ -20,6 +20,7 @@ from app.providers.base import (
     LLMProvider,
     ModelInfo,
     ProviderError,
+    RateLimitError,
     StreamChunk,
 )
 
@@ -89,6 +90,8 @@ class OpenAICompatProvider(LLMProvider):
                     client, "POST", self._url("/chat/completions"),
                     headers=self._headers(), json=body,
                 )
+                if resp.status_code == 429:
+                    raise RateLimitError(f"{self.name} is rate-limited (429).")
                 if resp.status_code >= 400:
                     raise ProviderError(
                         f"{self.name} chat failed: {resp.status_code} {resp.text[:300]}"
@@ -96,14 +99,15 @@ class OpenAICompatProvider(LLMProvider):
                 data = resp.json()
                 choices = data.get("choices") or []
                 content = choices[0]["message"]["content"] if choices else ""
-                if content or attempt == _MAX_ATTEMPTS - 1:
+                if content:
                     return ChatResult(
-                        content=content or "",
+                        content=content,
                         model=data.get("model", model),
                         usage=data.get("usage") or {},
                     )
                 await asyncio.sleep(_backoff_seconds(attempt))
-        raise ProviderError(f"{self.name} chat returned no content")
+        # Exhausted retries with only empty responses — treat as a soft rate limit.
+        raise RateLimitError(f"{self.name} returned no content (soft rate limit).")
 
     async def stream(
         self, messages: Sequence[ChatMessage], *, model: str | None = None, **opts
@@ -116,6 +120,9 @@ class OpenAICompatProvider(LLMProvider):
                 stream=True, headers=self._headers(), json=body,
             )
             try:
+                if resp.status_code == 429:
+                    await resp.aread()
+                    raise RateLimitError(f"{self.name} is rate-limited (429).")
                 if resp.status_code >= 400:
                     text = await resp.aread()
                     raise ProviderError(
@@ -150,6 +157,8 @@ class OpenAICompatProvider(LLMProvider):
                 headers=self._headers(),
                 json={"model": model, "input": list(texts)},
             )
+        if resp.status_code == 429:
+            raise RateLimitError(f"{self.name} is rate-limited (429).")
         if resp.status_code >= 400:
             raise ProviderError(
                 f"{self.name} embed failed: {resp.status_code} {resp.text[:300]}"

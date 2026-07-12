@@ -63,6 +63,11 @@ class ProviderError(Exception):
     """Raised when a provider call fails or an operation is unsupported."""
 
 
+class RateLimitError(ProviderError):
+    """Raised when a provider is rate-limited / quota-exhausted (HTTP 429 or an
+    equivalent soft-throttle). Signals that a fallback provider should be tried."""
+
+
 class LLMProvider(ABC):
     """The contract every provider adapter fulfills."""
 

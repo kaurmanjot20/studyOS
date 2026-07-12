@@ -17,8 +17,14 @@ from app.core.config import settings
 from app.core.security import decrypt, encrypt
 from app.models.provider_settings import ProviderSettings
 from app.models.schemas import ConnectionTestRequest, ProviderSettingsUpsert
-from app.providers.base import ConnectionStatus, ProviderConfig, ProviderError
+from app.providers.base import (
+    ConnectionStatus,
+    LLMProvider,
+    ProviderConfig,
+    ProviderError,
+)
 from app.providers.factory import PROVIDER_META, build_provider
+from app.providers.fallback import FallbackProvider
 
 
 def _env_api_key(provider: str) -> str | None:
@@ -106,6 +112,32 @@ class ProviderService:
             embedding_model=settings.default_embedding_model,
             base_url=_env_base_url(provider),
         )
+
+    def _fallback_config(self) -> ProviderConfig:
+        fp = settings.fallback_provider
+        return ProviderConfig(
+            provider=fp,
+            api_key=_env_api_key(fp),
+            chat_model=settings.fallback_model,
+            embedding_model=settings.fallback_embedding_model,
+            base_url=_env_base_url(fp),
+        )
+
+    async def resolve_active_provider(
+        self, config: ProviderConfig | None = None
+    ) -> LLMProvider:
+        """Build the provider the agent uses, wrapping it with a local fallback (on
+        rate limits) when enabled and the fallback differs from the active provider."""
+        if config is None:
+            config = await self.resolve_active_config()
+        primary = build_provider(config)
+        if (
+            settings.enable_local_fallback
+            and config.provider != settings.fallback_provider
+        ):
+            fallback = build_provider(self._fallback_config())
+            return FallbackProvider(primary, fallback)
+        return primary
 
     async def _config_for_test(self, req: ConnectionTestRequest) -> ProviderConfig:
         row = await self._get(req.provider)
