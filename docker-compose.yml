@@ -16,7 +16,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-interviewos}
       POSTGRES_DB: ${POSTGRES_DB:-interviewos}
     ports:
-      - "5432:5432"
+      # Bound to localhost only — not reachable from other machines on the network.
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -36,7 +37,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "8000:8000"
+      # Host 8008 → container 8000 (8000 is used by another local app).
+      - "127.0.0.1:8008:8000"
     volumes:
       - ./backend:/app
       - backend_storage:/app/storage
@@ -47,9 +49,9 @@ services:
   frontend:
     build: ./frontend
     environment:
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8008}
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules

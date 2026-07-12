@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { Markdown } from "@/components/chat/markdown";
 import { Button } from "@/components/ui/button";
 import { HistoryMenu } from "@/components/ui/history-menu";
+import { Select } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import type { ArtifactSummary, DocumentItem } from "@/lib/types";
 
@@ -122,17 +123,15 @@ export function ResumeView({ workspaceId }: { workspaceId: string }) {
       ) : (
         <>
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <select
+            <Select
               value={docId}
-              onChange={(e) => setDocId(e.target.value)}
-              className="h-9 min-w-[200px] flex-1 rounded-md border border-input bg-transparent px-2 text-sm"
-            >
-              {docs.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.title || d.filename}
-                </option>
-              ))}
-            </select>
+              onChange={setDocId}
+              className="min-w-[200px] flex-1"
+              options={docs.map((d) => ({
+                value: d.id,
+                label: d.title || d.filename,
+              }))}
+            />
             <Button variant="outline" onClick={() => run("review")} disabled={loading !== null}>
               {loading === "review" ? <Loader2 className="size-4 animate-spin" /> : "Review resume"}
             </Button>

@@ -6,6 +6,7 @@ import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { StudyConfigBar } from "@/components/study/study-config-bar";
 import { Button } from "@/components/ui/button";
 import { HistoryMenu } from "@/components/ui/history-menu";
+import { Select } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { ArtifactSummary, QuizQuestion, QuizScoreResult } from "@/lib/types";
@@ -110,26 +111,25 @@ export function QuizView({ workspaceId }: { workspaceId: string }) {
         cta="Generate quiz"
         extra={
           <>
-            <select
+            <Select
               value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value)}
-              className="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
-            >
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
-            <select
-              value={count}
-              onChange={(e) => setCount(Number(e.target.value))}
-              className="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
-            >
-              {[3, 5, 8, 10].map((n) => (
-                <option key={n} value={n}>
-                  {n} Qs
-                </option>
-              ))}
-            </select>
+              onChange={setDifficulty}
+              className="w-28"
+              options={[
+                { value: "easy", label: "Easy" },
+                { value: "medium", label: "Medium" },
+                { value: "hard", label: "Hard" },
+              ]}
+            />
+            <Select
+              value={String(count)}
+              onChange={(v) => setCount(Number(v))}
+              className="w-24"
+              options={[3, 5, 8, 10].map((n) => ({
+                value: String(n),
+                label: `${n} Qs`,
+              }))}
+            />
           </>
         }
       />

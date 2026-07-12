@@ -7,6 +7,7 @@ import { Markdown } from "@/components/chat/markdown";
 import { Button } from "@/components/ui/button";
 import { HistoryMenu } from "@/components/ui/history-menu";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { InterviewSession } from "@/lib/types";
@@ -119,16 +120,22 @@ export function InterviewView({ workspaceId }: { workspaceId: string }) {
           </Field>
           <div className="flex gap-3">
             <Field label="Difficulty">
-              <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm">
-                <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
-                <option value="hard">Hard</option>
-              </select>
+              <Select
+                value={difficulty}
+                onChange={setDifficulty}
+                options={[
+                  { value: "easy", label: "Easy" },
+                  { value: "medium", label: "Medium" },
+                  { value: "hard", label: "Hard" },
+                ]}
+              />
             </Field>
             <Field label="Questions">
-              <select value={count} onChange={(e) => setCount(Number(e.target.value))} className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm">
-                {[3, 5, 8].map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
+              <Select
+                value={String(count)}
+                onChange={(v) => setCount(Number(v))}
+                options={[3, 5, 8].map((n) => ({ value: String(n), label: String(n) }))}
+              />
             </Field>
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
