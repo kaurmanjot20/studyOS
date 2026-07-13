@@ -1,169 +1,144 @@
 # StudyOS
 
-An AI-powered interview-preparation workspace. It combines your own notes, books, slides,
-PDFs, and resume with live web knowledge to prepare you for software-engineering
-interviews.
+StudyOS is an interview-prep workspace I built to study from my own material instead of
+generic chatbots. You drop in your notes, textbooks, slides and resume, and it helps you
+prep for software engineering interviews using that material first, and the web only when
+your notes don't cover something.
 
-It is **not** "chat with a PDF." Every request is routed by a **planner agent** that
-decides which tools to use — search notes (RAG), search the web, consult memory of weak
-topics, or inspect your files over MCP — *before* any answer is produced. It is
-**provider-agnostic**: bring your own LLM key (OpenAI, Anthropic, Gemini, OpenRouter,
-NVIDIA, or local Ollama), with an automatic local fallback when a hosted tier rate-limits.
+The thing I cared about most was that it shouldn't just be another "chat with a PDF"
+wrapper. Every question you ask goes through a planner first. The planner looks at the
+question (and what it knows about your weak spots) and decides how to answer: search your
+notes, search the web, pull from memory, or read a file over MCP. Only then does it write
+an answer, and it shows you which sources it used.
 
-> Open-source, local-first, single-user — no login required.
+It's also not tied to any one AI provider. You bring your own key (OpenAI, Anthropic,
+Gemini, OpenRouter, NVIDIA, or a local Ollama model), and if a hosted free tier starts
+rate-limiting you mid-answer, it quietly falls back to a local model so you're never
+stuck.
 
----
+Runs entirely on your machine. No accounts, no login, single user.
 
-## Highlights
+## What it does
 
-- **Planner-first agent** (LangGraph) with a visible plan trace in the UI
-- **RAG** over your own documents with inline, clickable citations
-- **Provider abstraction** — swap LLM providers with one setting, no code changes; local
-  fallback (Ollama) kicks in automatically on rate limits
-- **Document pipeline** — PDF / DOCX / PPTX / TXT / images (OCR) → extract → chunk → embed
-- **Memory** of weak topics that shapes future revision and interviews
-- **Mock interviews** (scored, with feedback + history) and **resume** review / Q&A
-- **Quizzes, flashcards, revision** cheat sheets — quiz misses feed back into memory
-- **Web search** when your notes are insufficient, clearly labeled vs note sources
-- **MCP** integration (Filesystem + Notion), extensible registry, exposed to the planner
+- Chat that plans before it answers, grounded in your documents with real citations
+- A document pipeline that handles PDF, DOCX, PPTX, TXT and images (OCR), then chunks and
+  embeds everything into pgvector
+- Quizzes, flashcards and one-page revision sheets generated from your notes
+- Mock interviews that ask questions, score your answers and give feedback
+- Resume review and resume-based interview questions
+- A memory of the topics you keep getting wrong, which the planner uses to prioritise
+  revision (miss a quiz question, and that topic gets weighted up next time)
+- Web search for the stuff your notes don't cover, kept clearly separate from your own
+  material
+- MCP support (filesystem and Notion) so the agent can reach beyond the database
 
----
+## Stack
 
-## Tech Stack
+Frontend is Next.js (App Router) with Tailwind and shadcn/ui, dark mode by default.
+Backend is FastAPI with async SQLAlchemy and Pydantic. Data lives in Postgres with the
+pgvector extension for similarity search. The agent is built on LangGraph. Documents are
+parsed with PyMuPDF, python-docx, python-pptx and Tesseract for OCR. Everything runs
+through Docker Compose.
 
-| Layer | Choice |
-|-------|--------|
-| Frontend | Next.js (App Router), Tailwind, shadcn/ui, dark-first |
-| Backend | FastAPI, Pydantic v2, async SQLAlchemy |
-| Database | PostgreSQL + pgvector (HNSW cosine index) |
-| Agent | LangGraph |
-| Parsing | PyMuPDF, python-docx, python-pptx, Tesseract (OCR) |
-| Integrations | MCP (Model Context Protocol), DuckDuckGo web search |
-| Runtime | Docker Compose |
+## How it works
 
----
+Every chat turn runs a small LangGraph graph: plan, then retrieve, then stream the answer.
+The planner returns a structured plan (which tools, and why), the retrieve step runs
+whatever tools it picked (notes, web, memory, files), and the answer streams back from
+whichever provider you've set, with citations attached. The plan and the sources show up
+live in the right sidebar so you can see what it actually did.
 
-## Architecture
+All model access goes through one `LLMProvider` interface, so adding or switching
+providers doesn't touch the rest of the code. The adapters talk to each API over plain
+HTTP rather than pulling in five different SDKs. Chat and embeddings can even run on
+different providers, which is handy when your chat provider has no embeddings endpoint
+(OpenRouter, for example) and you want embeddings to run locally on Ollama.
 
-```
-                         ┌──────────────────────────────────────────┐
-                         │   Frontend — Next.js · Tailwind · shadcn  │
-                         │   3-pane shell · streaming chat · settings│
-                         └───────────────┬──────────────────────────┘
-                                         │ HTTPS / SSE
-                         ┌───────────────▼──────────────────────────┐
-                         │            Backend — FastAPI              │
-                         │  api/     thin routes → services          │
-                         │  agents/  LangGraph planner + tool nodes  │
-                         │  rag/     rewrite · retrieve · assemble    │
-                         │  providers/  LLMProvider + adapters + fallback │
-                         │  memory/ services/ prompts/ …             │
-                         └───────┬───────────────────────┬───────────┘
-                                 │                        │
-                    ┌────────────▼─────────┐   ┌──────────▼───────────┐
-                    │ Postgres + pgvector  │   │ Providers · Web · MCP│
-                    └──────────────────────┘   └──────────────────────┘
+## Running it
+
+```bash
+cp .env.example .env
+docker compose up --build
 ```
 
-**Planner-first flow.** Every turn runs a LangGraph graph: `planner → retrieve → (stream)`.
-The planner emits a structured plan (which tools + why), the retrieve node executes the
-chosen tools (notes RAG, web search, memory, filesystem MCP), and the answer is streamed
-from the resolved provider with citations. The plan and sources are surfaced live in the
-right sidebar.
+Then open http://localhost:3000. The API and its docs live at http://localhost:8000/docs.
+Everything binds to localhost only, so nothing is exposed to the rest of your network.
 
-**Provider abstraction.** All model access goes through `LLMProvider` (`chat`, `stream`,
-`embed`, `test_connection`, `list_models`). Adapters for OpenAI, Anthropic, Gemini,
-OpenRouter, NVIDIA (OpenAI-compatible via httpx — no vendor SDKs) and Ollama. A
-`FallbackProvider` transparently retries on a local Ollama model when the primary is
-rate-limited. Embeddings can use a **separate** provider from chat (e.g. chat on
-OpenRouter, embeddings on local Ollama).
+You can leave the defaults for a quick local run, but you'll want to open Settings (gear,
+top right) and point it at an AI provider with your own key. Hit Test Connection, then
+make a workspace and upload some notes.
 
-**The learning loop.** Quiz and mock-interview misses are recorded as *weak topics* in
-memory; the planner consults memory before answering, so chat and revision automatically
-prioritize what you struggle with.
+One gotcha: if you change something in `.env`, restart with `docker compose up -d backend`
+rather than `docker compose restart` — a plain restart won't reload the env file.
 
----
+### Using local models (no key needed)
 
-## Folder Guide
+If you'd rather not deal with API keys or rate limits, install
+[Ollama](https://ollama.com/download) and pull a couple of models:
+
+```bash
+ollama pull llama3.2         # chat
+ollama pull nomic-embed-text # embeddings
+```
+
+The backend reaches Ollama on the host through `host.docker.internal`. This is also what
+the automatic fallback uses when a hosted provider throttles you.
+
+## Configuration
+
+The important settings in `.env` (full list in `.env.example`):
+
+- `DEFAULT_LLM_PROVIDER` / `DEFAULT_LLM_MODEL` — what to use when nothing's set in Settings
+- `EMBEDDING_PROVIDER`, `DEFAULT_EMBEDDING_MODEL`, `EMBEDDING_DIM` — the embedding model
+  and its vector size. If you change the dimension you have to recreate the DB volume
+  (`docker compose down -v`), since the pgvector column is a fixed size
+- `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `NVIDIA_API_KEY` — provider
+  keys (you can also just enter these in Settings, where they're encrypted)
+- `ENABLE_LOCAL_FALLBACK`, `FALLBACK_MODEL` — the local model to fall back to on rate limits
+- `ENCRYPTION_KEY` — used to encrypt provider keys stored in the database
+- `NOTION_API_KEY` — only needed if you want the Notion MCP server
+
+Provider keys you enter in the app are encrypted before they hit the database, and the
+services only ever bind to localhost, so nothing is exposed to your network.
+
+## Project layout
 
 ```
 backend/app/
-  api/         FastAPI routers (thin): chat, documents, settings, study, interview, mcp…
-  agents/      LangGraph graph, planner, agent state
+  api/         thin FastAPI routers, one per feature
+  agents/      the LangGraph graph, planner and agent state
   rag/         extraction, chunking, retrieval
-  providers/   LLMProvider interface + adapters + factory + fallback  (only vendor calls)
-  memory/      long-term memory service
-  services/    business logic (document, chat, study, interview, resume, web_search, mcp…)
-  models/      SQLAlchemy models + Pydantic schemas
-  db/          async engine, session, migration wiring
-  prompts/     planner / synthesis / study / interview prompt templates
-  core/        config, security (key encryption)
+  providers/   the LLMProvider interface, adapters and fallback (the only place that
+               talks to vendor APIs)
+  memory/      long-term memory
+  services/    the actual business logic
+  models/      SQLAlchemy models and Pydantic schemas
+  prompts/     prompt templates
+  core/        config and key encryption
   alembic/     migrations
 frontend/
-  app/         App Router entry + global styles
-  components/  shell (3-pane), chat, study, interview, settings, documents
-  lib/         api client, SSE chat stream, types
+  app/         routes and global styles
+  components/  the three-pane shell, chat, study, interview, settings
+  lib/         API client, the SSE chat stream, types
 ```
 
----
+## A few dev notes
 
-## Quick Start (Docker)
+- Backend code is bind-mounted and reloads on save. Migrations run automatically when the
+  container starts; to run one by hand, `docker compose exec backend alembic upgrade head`.
+- The frontend runs `next dev` inside its container with hot reload. If you want to run it
+  bare with `npm run dev`, don't leave the Docker one running too, they'll fight over
+  port 3000.
+- Logs: `docker compose logs -f`.
+- Your data lives in a Docker volume, so it survives restarts. `docker compose down` keeps
+  it; only `docker compose down -v` wipes it.
 
-```bash
-cp .env.example .env        # then fill in secrets (or leave defaults for local dev)
-docker compose up --build   # db (postgres+pgvector) + backend + frontend
-```
+## Upcoming
 
-- **App:** http://localhost:3000
-- **API docs:** http://localhost:8000/docs
-- **Health:** http://localhost:8000/health
+Things I still want to add:
 
-Open **Settings** (gear, top-right) to pick your AI provider, paste your own API key, run
-**Test Connection**, then create a workspace and upload notes.
-
-> After editing `.env`, run `docker compose up -d backend` to reload it (a plain
-> `restart` will not pick up new env values).
-
----
-
-## Environment Setup
-
-Key `.env` values (see `.env.example` for the full list):
-
-| Variable | Purpose |
-|----------|---------|
-| `DEFAULT_LLM_PROVIDER` / `DEFAULT_LLM_MODEL` | dev fallback provider + chat model |
-| `EMBEDDING_PROVIDER` / `DEFAULT_EMBEDDING_MODEL` / `EMBEDDING_DIM` | embeddings (must match model's dimension; changing `EMBEDDING_DIM` needs `docker compose down -v`) |
-| `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY`, `NVIDIA_API_KEY` | provider keys (or set them in Settings) |
-| `ENABLE_LOCAL_FALLBACK`, `FALLBACK_MODEL` | local Ollama fallback on rate limits |
-| `ENCRYPTION_KEY` | encrypts stored provider keys at rest |
-| `MCP_FILESYSTEM_ENABLED`, `NOTION_API_KEY` | MCP servers |
-
-**Local models (recommended for unlimited, key-free use):** install
-[Ollama](https://ollama.com/download), then `ollama pull llama3.2` (chat) and
-`ollama pull nomic-embed-text` (embeddings). The backend reaches host Ollama via
-`host.docker.internal`.
-
----
-
-## Local Development
-
-- **Backend:** code is bind-mounted; `uvicorn --reload` picks up changes. Migrations run
-  on container start via `entrypoint.sh`; run one manually with
-  `docker compose exec backend alembic upgrade head`.
-- **Frontend:** `next dev` runs in its container with hot reload. To develop bare:
-  `cd frontend && npm install && npm run dev` (but don't run it alongside the Docker
-  frontend — they'll both want port 3000).
-- **New migration:** `docker compose exec backend alembic revision -m "msg"`.
-- **Logs:** `docker compose logs -f`.
-
----
-
-## Roadmap
-
-- Streaming for study/interview generation
-- Richer MCP server catalog + per-workspace MCP config
-- Spaced-repetition scheduling for flashcards
-- Interview audio (speech-to-text answers)
-- Export revision sheets to PDF / Notion
-
+- Streaming for quiz and interview generation (right now they generate in one shot)
+- A bigger catalog of MCP servers, configurable per workspace
+- Proper spaced repetition for the flashcards
+- Speaking your interview answers instead of typing them
+- Exporting revision sheets to PDF or straight into Notion
