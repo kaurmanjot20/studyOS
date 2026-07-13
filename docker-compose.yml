@@ -37,8 +37,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      # Host 8008 → container 8000 (8000 is used by another local app).
-      - "127.0.0.1:8008:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./backend:/app
       - backend_storage:/app/storage
@@ -49,7 +48,7 @@ services:
   frontend:
     build: ./frontend
     environment:
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8008}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
